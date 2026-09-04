@@ -1,0 +1,24 @@
+{
+  "llm": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "api_key": "",
+    "base_url": null,
+    "max_tokens": 8192,
+    "temperature": 0.7
+  },
+  "render_mode": "inline",
+  "policy": {
+    "hitl_mode": "auto",
+    "path_guard_enabled": true,
+    "command_guard_enabled": true
+  },
+  "features": {
+    "mcp": true,
+    "skill": true,
+    "memory": true,
+    "audit_log": true,
+    "context_compression": true,
+    "code_index": true
+  }
+}

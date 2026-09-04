@@ -1,0 +1,22 @@
+# ============================================================
+# AgentCLI - Python Terminal AI Agent (like Claude Code)
+# ============================================================
+# Install:  pip install -r requirements.txt
+# Dev:      pip install -r requirements.txt -r requirements-dev.txt
+
+# --- Core runtime ---
+httpx>=0.27.0              # HTTP client for LLM API calls & web fetching
+mcp>=1.27,<2               # Model Context Protocol SDK (client + server)
+pydantic>=2.0              # Data validation (used by MCP client)
+pillow>=10.0               # Image processing (base64 encode for LLM vision)
+prompt-toolkit>=3.0.43     # REPL prompt UI with history & autocomplete
+rich>=13.7.0               # Rich terminal output (markdown, tables, layouts)
+typer>=0.12.3              # CLI argument parsing & subcommands
+
+# --- LLM SDKs (optional: install one per provider) ---
+# openai>=1.0.0            # OpenAI / Azure / DeepSeek / 智谱 / 月之暗面 / Step
+# anthropic>=0.30.0        # Anthropic Claude
+
+# --- Development ---
+# pytest>=8.2.0
+# ruff>=0.5.0
