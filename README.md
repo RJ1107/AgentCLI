@@ -1,6 +1,6 @@
-# AgentCLI Python
+# AgentCLI
 
-AgentCLI Python is a terminal-native AI agent CLI for working inside real software projects. It can read and edit files, search code, run approved commands, call MCP tools, keep scoped memory, create snapshots, and expose a lightweight Runtime API for thread and background task execution.
+AgentCLI is a terminal-native AI agent CLI for working inside real software projects. It can read and edit files, search code, run approved commands, call MCP tools, keep scoped memory, create snapshots, and expose a lightweight Runtime API for thread and background task execution.
 
 The project is designed as a practical coding-agent workbench rather than a UI-only demo. Core paths are covered by tests and can be exercised from the terminal through ReAct, plan-and-execute, and multi-agent workflows.
 
