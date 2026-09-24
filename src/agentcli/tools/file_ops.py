@@ -167,8 +167,12 @@ def edit_file(
     *,
     path_guard_enabled: bool = True,
     dry_run: bool = False,
+    replace_all: bool = False,
 ) -> FileOpResult:
-    """Replace the first occurrence of *old_text* with *new_text* in *path*.
+    """Replace the unique occurrence of *old_text* (or every one, with *replace_all*).
+
+    An ambiguous match is an error rather than "first occurrence wins": a short old_text that
+    also appears elsewhere would otherwise silently edit the wrong place.
 
     This is a surgical find-and-replace that operates on the raw file
     content (not line-based), which makes it suitable for structured edits.
@@ -190,7 +194,14 @@ def edit_file(
             is_error=True,
         )
 
-    new_content = original.replace(old_text, new_text, 1)
+    occurrences = original.count(old_text)
+    if occurrences > 1 and not replace_all:
+        return FileOpResult(
+            f"edit_file failed: `old_text` matches {occurrences} places. Include more "
+            "surrounding lines to make it unique, or set replace_all to change every match.",
+            is_error=True,
+        )
+    new_content = original.replace(old_text, new_text, -1 if replace_all else 1)
     if new_content == original:
         return FileOpResult("edit_file: no changes made (old_text == new_text).")
 

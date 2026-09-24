@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
-from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any
 
@@ -12,7 +11,7 @@ from agentcli.llm.base import LlmClient
 from agentcli.plan import ExecutionPlan, Planner, Task, TaskStatus
 from agentcli.prompt import PromptAssembler
 from agentcli.skill import SkillContextBuffer
-from agentcli.snapshot import SnapshotService
+from agentcli.snapshot import TurnSnapshot
 from agentcli.tools.registry import ToolRegistry
 from agentcli.types import Message, Usage
 
@@ -41,6 +40,7 @@ class PlanExecuteAgent:
         approval_callback=None,
         planner: Planner | None = None,
         max_task_turns: int = 8,
+        turn_snapshot: TurnSnapshot | None = None,
     ):
         self.llm_client = llm_client
         self.tool_registry = tool_registry
@@ -50,11 +50,12 @@ class PlanExecuteAgent:
         self.planner = planner or Planner(llm_client)
         self.max_task_turns = max_task_turns
         self.history: list[Message] = []
+        # Given by an outer run (Agent, Team worker) that owns the request; else one per run().
+        self._outer_snapshot = turn_snapshot
+        self.turn_snapshot: TurnSnapshot | None = turn_snapshot
 
     async def run(self, message: str) -> AsyncIterator[dict[str, Any]]:
-        snapshot = SnapshotService(self.cwd)
-        with suppress(Exception):
-            snapshot.create("pre-turn")
+        self.turn_snapshot = self._outer_snapshot or TurnSnapshot(self.cwd)
         total_usage = Usage()
         total_turns = 0
         final_text = ""
@@ -88,9 +89,6 @@ class PlanExecuteAgent:
         except Exception as exc:  # noqa: BLE001
             yield {"type": "error", "error": exc}
             return
-        finally:
-            with suppress(Exception):
-                snapshot.create("post-turn")
         done: dict[str, Any] = {
             "type": "done",
             "total_turns": total_turns,
@@ -234,6 +232,7 @@ class PlanExecuteAgent:
                 # Parallel plan tasks must never share one-shot Skill context.
                 skill_context_buffer=SkillContextBuffer(),
                 max_turns=self.max_task_turns,
+                turn_snapshot=self.turn_snapshot,
             ):
                 if event.get("type") == "text_delta":
                     text += str(event.get("text") or "")
@@ -278,10 +277,11 @@ class PlanExecuteAgent:
             model=self.llm_client.model_name,
             provider=self.llm_client.provider_name,
         ).build_static()
+        # Task id and type go into the user message (_task_context), so all tasks of a plan
+        # share one system prompt and therefore one cached prefix.
         return (
             base
-            + "\n\n你正在执行 Plan-and-Execute DAG 中的一个任务。\n"
-            + f"任务 id：{task.id}\n任务类型：{task.type.value}\n"
+            + "\n\n你正在执行 Plan-and-Execute DAG 中的一个任务。"
             + "请具体完成任务，并在需要时使用工具。"
             + _task_language_instruction(plan.goal)
         )
@@ -304,7 +304,7 @@ def _executable_tasks_in_order(plan: ExecutionPlan) -> list[Task]:
 def _task_context(plan: ExecutionPlan, task: Task) -> str:
     lines = [
         f"目标：{plan.goal}",
-        f"当前任务 [{task.id}]：{task.description}",
+        f"当前任务 [{task.id}]（类型：{task.type.value}）：{task.description}",
         "",
         "已完成的依赖任务结果：",
     ]

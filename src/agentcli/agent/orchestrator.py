@@ -4,7 +4,6 @@ import asyncio
 import json
 import re
 from collections.abc import AsyncIterator
-from contextlib import suppress
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
@@ -14,7 +13,7 @@ from agentcli.config import AgentCliConfig
 from agentcli.llm.base import LlmClient
 from agentcli.prompt import PromptAssembler
 from agentcli.skill import SkillContextBuffer
-from agentcli.snapshot import SnapshotService
+from agentcli.snapshot import TurnSnapshot
 from agentcli.tools.registry import ToolRegistry
 from agentcli.types import Message, Usage
 
@@ -116,6 +115,7 @@ class SubAgent:
         skill_context_buffer: SkillContextBuffer | None = None,
         default_mode: str = AgentRunMode.REACT.value,
         max_plan_depth: int = 1,
+        turn_snapshot: TurnSnapshot | None = None,
     ):
         self.name = name
         self.role = role
@@ -128,6 +128,10 @@ class SubAgent:
         self.default_mode = _normalize_worker_mode(default_mode)
         self.max_plan_depth = max(1, max_plan_depth)
         self.history: list[Message] = []
+        # Own read/write record, so one worker cannot overwrite a file another worker changed
+        # after this worker read it.
+        self.file_state: dict[str, int] = {}
+        self.turn_snapshot = turn_snapshot
 
     async def execute(
         self,
@@ -156,6 +160,7 @@ class SubAgent:
     def clear_history(self) -> None:
         self.history = []
         self.skill_context_buffer.clear()
+        self.file_state.clear()
 
     async def _execute_worker(self, content: str) -> AgentMessage:
         text = ""
@@ -174,6 +179,8 @@ class SubAgent:
                 approval_callback=self.approval_callback,
                 skill_context_buffer=self.skill_context_buffer,
                 max_turns=8,
+                file_state=self.file_state,
+                turn_snapshot=self.turn_snapshot,
             ):
                 if event.get("type") == "text_delta":
                     text += str(event.get("text") or "")
@@ -205,6 +212,7 @@ class SubAgent:
             config=self.config,
             cwd=self.cwd,
             approval_callback=self.approval_callback,
+            turn_snapshot=self.turn_snapshot,
         )
         text = ""
         usage = Usage()
@@ -286,6 +294,7 @@ class AgentOrchestrator:
         approval_callback=None,
         worker_count: int = 2,
         default_worker_mode: str = AgentRunMode.REACT.value,
+        turn_snapshot: TurnSnapshot | None = None,
     ):
         self.llm_client = llm_client
         self.tool_registry = tool_registry
@@ -293,6 +302,8 @@ class AgentOrchestrator:
         self.cwd = cwd
         self.approval_callback = approval_callback
         self.default_worker_mode = _normalize_worker_mode(default_worker_mode)
+        self._outer_snapshot = turn_snapshot
+        self.turn_snapshot: TurnSnapshot | None = turn_snapshot
         self.planner = self._subagent("planner", AgentRole.PLANNER)
         self.workers = [
             self._subagent(f"worker-{index}", AgentRole.WORKER)
@@ -304,9 +315,10 @@ class AgentOrchestrator:
         self.total_turns = 0
 
     async def run(self, message: str) -> AsyncIterator[dict[str, Any]]:
-        snapshot = SnapshotService(self.cwd)
-        with suppress(Exception):
-            snapshot.create("pre-turn")
+        # One snapshot for the whole team run, shared by every worker.
+        self.turn_snapshot = self._outer_snapshot or TurnSnapshot(self.cwd)
+        for agent in [self.planner, *self.workers, self.reviewer]:
+            agent.turn_snapshot = self.turn_snapshot
         final_text = ""
         self.total_usage = Usage()
         self.total_turns = 0
@@ -338,9 +350,6 @@ class AgentOrchestrator:
         except Exception as exc:  # noqa: BLE001
             yield {"type": "error", "error": exc}
             return
-        finally:
-            with suppress(Exception):
-                snapshot.create("post-turn")
         done: dict[str, Any] = {
             "type": "done",
             "total_turns": self.total_turns,
@@ -495,9 +504,11 @@ class AgentOrchestrator:
             raw_deps = node.get("dependencies") or []
             if not isinstance(raw_deps, list):
                 continue
-            steps[index - 1].dependencies = [
-                id_mapping.get(str(dep), str(dep)) for dep in raw_deps if str(dep)
-            ]
+            known = {step.id for step in steps}
+            resolved = [id_mapping.get(str(dep), str(dep)) for dep in raw_deps if str(dep)]
+            # A dependency on a step that does not exist can never complete; dropping it keeps
+            # the step runnable instead of leaving it pending forever.
+            steps[index - 1].dependencies = [dep for dep in resolved if dep in known]
         return steps
 
     def get_executable_steps(self, steps: list[ExecutionStep]) -> list[ExecutionStep]:
@@ -591,6 +602,7 @@ class AgentOrchestrator:
             # other's loaded Skill instructions.
             skill_context_buffer=SkillContextBuffer(),
             default_mode=self.default_worker_mode,
+            turn_snapshot=self.turn_snapshot,
         )
 
     def _update_step(
@@ -603,6 +615,35 @@ class AgentOrchestrator:
             if step.id == step_id:
                 steps[index] = updated
                 return
+
+
+def find_cycle(steps: list[ExecutionStep]) -> list[str]:
+    """Return one dependency cycle as step ids (first id repeated at the end), or []."""
+
+    deps = {step.id: step.dependencies for step in steps}
+    state: dict[str, int] = {}  # 1 = on the current DFS path, 2 = fully explored
+    path: list[str] = []
+
+    def visit(step_id: str) -> list[str]:
+        state[step_id] = 1
+        path.append(step_id)
+        for dep in deps.get(step_id, []):
+            if state.get(dep) == 1:
+                return [*path[path.index(dep) :], dep]
+            if dep in deps and state.get(dep) is None:
+                found = visit(dep)
+                if found:
+                    return found
+        path.pop()
+        state[step_id] = 2
+        return []
+
+    for step in steps:
+        if state.get(step.id) is None:
+            found = visit(step.id)
+            if found:
+                return found
+    return []
 
 
 def _parse_json_object(text: str) -> dict[str, Any]:

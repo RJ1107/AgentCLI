@@ -8,7 +8,14 @@ from agentcli.memory import MemoryManager
 
 
 class PromptAssembler:
-    """Build a cache-friendly static prefix plus a request-specific dynamic suffix."""
+    """Build a cache-friendly static system prompt plus a per-request context block.
+
+    Providers cache by exact prefix: system prompt, tool definitions, then messages in order.
+    Anything that changes between requests (date, recalled memories) therefore must not live
+    in the system prompt, or every new request invalidates the cached conversation behind it.
+    The static part goes into the system prompt once per session; the dynamic part is attached
+    to the user message that triggered it and then stays frozen in history.
+    """
 
     def __init__(
         self,
@@ -67,12 +74,18 @@ class PromptAssembler:
         return "\n".join(parts)
 
     def build_dynamic(self, user_message: str) -> str:
+        """Context for one user request, attached to that request's user message.
+
+        The date is day-granular on purpose: it is the only clock the model needs, and a
+        timestamp would make identical requests differ byte-for-byte. Tool names are not
+        repeated here because the tool definitions already travel with every request.
+        """
+
         parts = [
             '<runtime-context trust="generated">',
-            f"Current time: {datetime.now().astimezone().isoformat(timespec='seconds')}",
+            f"Current date: {datetime.now().astimezone().date().isoformat()}",
             f"Working directory: {self.cwd}",
             f"Model: {self.model} ({self.provider})",
-            f"Available tools: {', '.join(self.tool_names)}",
             "</runtime-context>",
         ]
         memories = self._recalled_memories(user_message)

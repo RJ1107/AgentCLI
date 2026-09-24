@@ -106,6 +106,17 @@ def main(
         str,
         typer.Option("--worker-mode", help="Sub-Agent worker mode in team runs: react or plan"),
     ] = "react",
+    # --- Safety ---
+    hitl: Annotated[
+        str | None,
+        typer.Option(
+            "--hitl",
+            help=(
+                "Approval policy: auto (writes and commands need approval; refused in -p), "
+                "always, or never (approve everything, e.g. in a sandboxed CI job)"
+            ),
+        ),
+    ] = None,
     # --- Output ---
     json_output: Annotated[
         bool,
@@ -148,6 +159,10 @@ def main(
         overrides["llm"] = llm_overrides
     if plain:
         overrides["render_mode"] = "plain"
+    if hitl is not None:
+        if hitl not in {"auto", "always", "never"}:
+            raise typer.BadParameter("hitl must be auto, always, or never", param_hint="--hitl")
+        overrides["policy"] = {"hitl_mode": hitl}
 
     config = load_config(project_root=root, overrides=overrides)
     if plain:
@@ -277,8 +292,26 @@ def mcp_init_chrome(
         str | None,
         typer.Option("--browser-url", help="Connect to an existing Chrome remote debugging URL"),
     ] = None,
-    headless: Annotated[bool, typer.Option("--headless", help="Start Chrome headless")] = False,
+    headless: Annotated[
+        bool,
+        typer.Option("--headless/--headed", help="Run the background browser without a window"),
+    ] = True,
     slim: Annotated[bool, typer.Option("--slim", help="Use Chrome DevTools slim mode")] = False,
+    shared_profile: Annotated[
+        bool,
+        typer.Option(
+            "--shared-profile",
+            help="Background browser reuses one profile instead of a throwaway one per session",
+        ),
+    ] = False,
+    visible: Annotated[
+        bool,
+        typer.Option(
+            "--visible/--no-visible",
+            help="Also configure chrome-visible, a windowed browser with a saved AgentCLI-only "
+            "profile for sites that need your login",
+        ),
+    ] = True,
 ) -> None:
     """Write Chrome DevTools MCP config to the project or user scope."""
     if scope not in {"user", "project"}:
@@ -289,8 +322,19 @@ def mcp_init_chrome(
         browser_url=browser_url,
         headless=headless,
         slim=slim,
+        isolated=not shared_profile,
+        visible=visible,
     )
     typer.echo(f"Wrote Chrome DevTools MCP config to {path}")
+    typer.echo("Browsers start only when the agent first uses them.")
+
+
+@mcp_app.command("refresh")
+def mcp_refresh() -> None:
+    """Forget cached MCP tool lists; each server is asked again on next start."""
+    from agentcli.mcp.cache import ToolListCache
+
+    typer.echo(f"Cleared {ToolListCache().clear()} cached tool list(s).")
 
 
 @mcp_app.command("list")
@@ -352,6 +396,9 @@ async def _run_prompt(
     except Exception as exc:  # noqa: BLE001 - CLI should report model/config errors cleanly
         typer.echo(f"Fatal error: {exc}", err=True)
         raise typer.Exit(1) from exc
+    finally:
+        if manager:
+            await manager.aclose()
     if json_output:
         typer.echo(
             json.dumps(

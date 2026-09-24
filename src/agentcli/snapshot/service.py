@@ -95,7 +95,7 @@ class SnapshotService:
 
     def _copy_tree(self, source: Path, target: Path) -> None:
         for item in source.iterdir():
-            if _skip(item):
+            if _skip(item) or self._holds_store(item):
                 continue
             destination = target / item.name
             if item.is_dir():
@@ -106,13 +106,46 @@ class SnapshotService:
 
     def _restore_tree(self, source: Path, target: Path) -> None:
         for item in target.iterdir():
-            if _skip(item):
+            if _skip(item) or self._holds_store(item):
                 continue
             if item.is_dir():
                 shutil.rmtree(item)
             else:
                 item.unlink()
         self._copy_tree(source, target)
+
+    def _holds_store(self, item: Path) -> bool:
+        # When the project contains the snapshot store (e.g. the home directory is the
+        # project), copying it would copy snapshots into themselves and restoring would
+        # delete them.
+        return self.root == item.resolve() or item.resolve() in self.root.parents
+
+
+class TurnSnapshot:
+    """At most one snapshot per user request, taken right before its first write.
+
+    A request that only reads (read_file, grep, ...) never pays for a snapshot. When a write
+    does come, the snapshot still shows the workspace exactly as it was when the request
+    started, because nothing before that point could have changed it. No snapshot is taken
+    after the request either: /restore records a "pre-restore" snapshot of the current state
+    first, so undoing a restore stays possible without it.
+    """
+
+    def __init__(self, project_root: str | Path):
+        self.project_root = project_root
+        self.record: SnapshotRecord | None = None
+        self._attempted = False
+
+    def before_write(self) -> None:
+        # Synchronous on purpose: in one event loop no other coroutine can run between the
+        # check and the copy, so parallel workers cannot take two snapshots for one request.
+        if self._attempted:
+            return
+        self._attempted = True
+        try:
+            self.record = SnapshotService(self.project_root).create("pre-write")
+        except Exception:  # noqa: BLE001 - a failed snapshot must not block the edit itself
+            self.record = None
 
 
 def _skip(path: Path) -> bool:

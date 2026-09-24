@@ -19,8 +19,8 @@ The project is designed as a practical coding-agent workbench rather than a UI-o
 - Built-in MCP server mode for exposing AgentCLI tools
 - Runtime API for threads, turns, event logs, and durable background tasks
 - Project-scoped SQLite memory with relevance recall, deduplication, TTL, and capacity control
-- Context budget management and deterministic conversation compression
-- Pre-run and post-run workspace snapshots with restore support
+- Layered context compression: stale tool results cleared first, then an LLM rolling summary with a deterministic fallback
+- Workspace snapshot taken right before a request's first write (none for read-only requests), with restore support
 - Local and remote image reference parsing, with provider capability fallback
 
 ## Requirements
@@ -174,7 +174,9 @@ uv run agentcli -p "Explain this repository"
 - `search_code`
 - `revert_turn`
 
-File writes, command execution, remote MCP write tools, snapshot restore, and skill persistence are routed through the policy/HITL/audit layer.
+File writes, command execution, remote MCP write tools, snapshot restore, and skill persistence are routed through the policy/HITL/audit layer. With the default `auto` policy they need approval; in single-prompt mode there is no one to approve, so pass `--hitl never` only inside a sandbox you are willing to let the agent change.
+
+An MCP tool normally needs approval. Its own `readOnlyHint` lets it skip approval only when its server entry in `.agentcli/mcp.json` sets `"trusted": true`, because a server describes itself and an untrusted one could claim to be read-only.
 
 ## Memory And Context
 
@@ -184,15 +186,38 @@ AgentCLI uses three memory layers:
 - Static long-term memory: `AGENTS.md`, `AGENTCLI.md`, `.agentcli/AGENTCLI.md`, and configured prompt files
 - Dynamic long-term memory: project-scoped SQLite records with kind, source, importance, confidence, TTL, access count, and content hash
 
-The prompt is split into a cache-friendly static prefix and a request-specific dynamic suffix. When the available input budget reaches the configured compression threshold, older conversation turns are summarized while recent messages and complete tool-call pairs are preserved.
+The system prompt is fully static for a session. Per-request context (date, working directory, recalled memories, skill candidates) is attached to the user message that triggered it and then stays frozen in history, so the provider prefix cache covers the system prompt, tool definitions, and all earlier turns.
+
+When the estimated input reaches `memory.compression_threshold` of the budget, compression runs in layers and stops as soon as the request fits under `memory.compression_target`:
+
+1. Old tool results beyond the newest `memory.keep_recent_tool_results` are replaced with short stubs.
+2. Older turns are folded into one rolling summary, written by `memory.summary_model` (empty means the session model) when the older part exceeds `memory.min_llm_summary_tokens`; otherwise, or on failure, an extractive summary is used. Set `memory.llm_summary` to `false` to never call a model.
+3. Oversized tool payloads in the retained turns are truncated.
+
+Recent turns and complete tool-call/result pairs are always kept verbatim. The summary is session state and is never written to long-term memory.
+
+File edits are guarded: `edit_file` requires a unique match (or `replace_all`), and both `edit_file` and `write_file` refuse to change an existing file that has not been read, or that changed since it was last read.
 
 ## MCP
 
-Configure Chrome DevTools MCP:
+Configure browsers for the agent (pages that need JavaScript, or a login):
 
 ```bash
-uv run agentcli mcp init-chrome --scope project
+uv run agentcli mcp init-chrome --scope user
 ```
+
+This writes two `chrome-devtools-mcp` servers, both with a pinned version and usage reporting off:
+
+- `chrome-devtools`: headless, with a throwaway `--isolated` profile, for public pages that only need JavaScript to render.
+- `chrome-visible`: a window you can see, with a saved AgentCLI-only profile in `~/.agentcli/browser-profile`, separate from your own Chrome. Use it for sites behind a login or a bot check: you sign in or complete the check yourself in that window, and the login is kept for next time. Delete the folder to forget every login. `--no-visible` skips it.
+
+Both are marked `"trusted": true`, so the server's own read-only tools skip approval while navigation, snapshots, clicks, and scripts still ask.
+
+MCP servers cost nothing until they are used:
+
+- Startup reads each server's tool list from a cache in `~/.agentcli/mcp-cache` instead of launching it. The cache is keyed on the server's command, arguments, and environment, so editing the config refreshes it; `agentcli mcp refresh` clears it.
+- MCP tools are deferred: requests carry only their names (in the `load_tools` tool), and the model loads the full definitions of the tools a task needs. Set `"defer": false` on a server to always send its tools.
+- A server starts on the first call to one of its tools, keeps one connection for the rest of the session (a page opened by `navigate_page` is still there for `take_snapshot`), and is stopped with the browsers it launched when the session ends.
 
 List configured MCP servers:
 

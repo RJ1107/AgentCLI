@@ -17,33 +17,40 @@ class ToolExecutor:
         calls: list[dict[str, Any]],
         context: ToolContext,
     ) -> list[ToolResult]:
-        read_calls: list[tuple[dict[str, Any], Tool]] = []
-        sequential_calls: list[tuple[dict[str, Any], Tool | None]] = []
+        """Run calls in the order the model issued them.
+
+        Consecutive read-only calls form a batch that runs concurrently. Any other call is a
+        barrier: the batch before it finishes first, then it runs alone. So a read that the
+        model placed after a write always sees the written content.
+        """
+        results: list[ToolResult] = []
+        batch: list[tuple[dict[str, Any], Tool]] = []
 
         for call in calls:
-            name = _tool_call_name(call)
-            tool = self.registry.get(name)
+            tool = self.registry.get(_tool_call_name(call))
             if tool and tool.is_read_only and tool.is_concurrency_safe:
-                read_calls.append((call, tool))
-            else:
-                sequential_calls.append((call, tool))
-
-        results: list[ToolResult] = []
-        if read_calls:
-            semaphore = asyncio.Semaphore(context.config.tools.max_concurrent_read)
-
-            async def run_read(call: dict[str, Any], tool: Tool) -> ToolResult:
-                async with semaphore:
-                    return await self._execute_single(call, tool, context)
-
-            results.extend(
-                await asyncio.gather(*(run_read(call, tool) for call, tool in read_calls))
-            )
-
-        for call, tool in sequential_calls:
+                batch.append((call, tool))
+                continue
+            results.extend(await self._run_concurrently(batch, context))
+            batch = []
             results.append(await self._execute_single(call, tool, context))
-
+        results.extend(await self._run_concurrently(batch, context))
         return results
+
+    async def _run_concurrently(
+        self,
+        batch: list[tuple[dict[str, Any], Tool]],
+        context: ToolContext,
+    ) -> list[ToolResult]:
+        if not batch:
+            return []
+        semaphore = asyncio.Semaphore(context.config.tools.max_concurrent_read)
+
+        async def run(call: dict[str, Any], tool: Tool) -> ToolResult:
+            async with semaphore:
+                return await self._execute_single(call, tool, context)
+
+        return list(await asyncio.gather(*(run(call, tool) for call, tool in batch)))
 
     async def _execute_single(
         self,
@@ -86,6 +93,11 @@ class ToolExecutor:
                 )
             if tool.requires_approval or context.config.policy.hitl_mode == "always":
                 approver = "hitl"
+
+            # Only now is it certain that a write will run: it is not read-only and it passed
+            # approval. A denied write costs no snapshot.
+            if not tool.is_read_only and context.turn_snapshot is not None:
+                context.turn_snapshot.before_write()
 
             result = await tool.execute(data, context)
             result.tool_use_id = tool_call_id

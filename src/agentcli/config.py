@@ -58,6 +58,14 @@ class MemoryConfig:
     compression_reserve_tokens: int = 1_024
     min_recent_messages: int = 6
     summary_max_chars: int = 6_000
+    # Summarize older turns with a model; the extractive summary remains the fallback.
+    llm_summary: bool = True
+    # Empty means the session model. Set a cheaper model of the same provider to save cost.
+    summary_model: str = ""
+    summary_max_tokens: int = 2_048
+    # Below this many older-turn tokens a model call costs more than it saves.
+    min_llm_summary_tokens: int = 2_000
+    keep_recent_tool_results: int = 6
 
 
 @dataclass(slots=True)
@@ -220,6 +228,7 @@ def _apply_env(data: dict[str, Any], env: dict[str, str | None]) -> dict[str, An
             "step": ("STEP_API_KEY",),
             "kimi": ("KIMI_API_KEY",),
             "moonshot": ("KIMI_API_KEY",),
+            "openrouter": ("OPENROUTER_API_KEY",),
             "freellmapi": ("FREELLMAPI_API_KEY",),
             "xfyun": ("XFYUN_API_KEY",),
             "agnes": ("AGNES_API_KEY",),

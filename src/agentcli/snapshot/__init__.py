@@ -1,3 +1,3 @@
-from agentcli.snapshot.service import SnapshotRecord, SnapshotService
+from agentcli.snapshot.service import SnapshotRecord, SnapshotService, TurnSnapshot
 
-__all__ = ["SnapshotRecord", "SnapshotService"]
+__all__ = ["SnapshotRecord", "SnapshotService", "TurnSnapshot"]

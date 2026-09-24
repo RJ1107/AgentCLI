@@ -71,7 +71,7 @@ src/agentcli/
 ├── mcp/         MCP client, server, and dynamic tool registration
 ├── runtime/     thread/turn API and durable task queue
 ├── render/      Rich and plain terminal rendering
-├── snapshot/    pre/post run snapshots and restore
+├── snapshot/    lazy pre-write snapshots and restore
 └── rag/         local code indexing and search
 ```
 

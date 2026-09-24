@@ -55,18 +55,10 @@ def test_timeout_becomes_recoverable_error_event(monkeypatch) -> None:
 
 
 def test_agent_propagates_connection_error_without_raising(tmp_path, monkeypatch) -> None:
-    class NoopSnapshotService:
-        def __init__(self, cwd):
-            self.cwd = cwd
-
-        def create(self, label):
-            return None
-
     def fail_stream(*args, **kwargs):
         request = httpx.Request("POST", "https://api.deepseek.com/v1/chat/completions")
         raise httpx.ConnectError("temporary connection failure", request=request)
 
-    monkeypatch.setattr("agentcli.agent.agent.SnapshotService", NoopSnapshotService)
     monkeypatch.setattr(httpx.AsyncClient, "stream", fail_stream)
     config = AgentCliConfig()
     config.llm.api_key = "key"
@@ -132,6 +124,25 @@ def test_usage_normalizes_old_and_provider_fields() -> None:
     assert provider.output_tokens == 4
     assert provider.reasoning_tokens == 2
     assert provider.total_tokens == 14
+
+
+def test_usage_reads_openai_standard_cached_tokens() -> None:
+    # OpenAI and OpenRouter report cache hits only inside prompt_tokens_details.
+    usage = Usage.from_mapping(
+        {
+            "prompt_tokens": 1000,
+            "completion_tokens": 50,
+            "prompt_tokens_details": {"cached_tokens": 800},
+        }
+    )
+
+    assert usage.input_tokens == 1000
+    assert usage.cache_hit_tokens == 800
+    assert usage.cache_miss_tokens == 200
+
+    no_cache_info = Usage.from_mapping({"prompt_tokens": 1000, "completion_tokens": 50})
+    assert no_cache_info.cache_hit_tokens == 0
+    assert no_cache_info.cache_miss_tokens == 0
 
 
 def test_deepseek_v4_profiles_and_cost_formula() -> None:

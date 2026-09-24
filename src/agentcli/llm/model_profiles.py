@@ -130,6 +130,56 @@ DEFAULT_MODEL_PROFILES: tuple[ModelProfile, ...] = (
         description="Agentic coding model with tool calling",
         api_key_env="ZAI_API_KEY",
     ),
+    ModelProfile(
+        id="openrouter-deepseek-v4-flash",
+        name="deepseek/deepseek-v4-flash (OpenRouter)",
+        provider="openrouter",
+        model="deepseek/deepseek-v4-flash",
+        base_url="https://openrouter.ai/api/v1",
+        context_window=1_048_576,
+        description="DeepSeek V4 Flash via OpenRouter; cheap default",
+        api_key_env="OPENROUTER_API_KEY",
+    ),
+    ModelProfile(
+        id="openrouter-deepseek-v4-pro",
+        name="deepseek/deepseek-v4-pro (OpenRouter)",
+        provider="openrouter",
+        model="deepseek/deepseek-v4-pro",
+        base_url="https://openrouter.ai/api/v1",
+        context_window=1_048_576,
+        description="DeepSeek V4 Pro via OpenRouter",
+        api_key_env="OPENROUTER_API_KEY",
+    ),
+    ModelProfile(
+        id="openrouter-qwen3-coder-plus",
+        name="qwen/qwen3-coder-plus (OpenRouter)",
+        provider="openrouter",
+        model="qwen/qwen3-coder-plus",
+        base_url="https://openrouter.ai/api/v1",
+        context_window=1_000_000,
+        description="Qwen3 Coder Plus via OpenRouter",
+        api_key_env="OPENROUTER_API_KEY",
+    ),
+    ModelProfile(
+        id="openrouter-kimi-k2.6",
+        name="moonshotai/kimi-k2.6 (OpenRouter)",
+        provider="openrouter",
+        model="moonshotai/kimi-k2.6",
+        base_url="https://openrouter.ai/api/v1",
+        context_window=262_144,
+        description="Kimi K2.6 via OpenRouter",
+        api_key_env="OPENROUTER_API_KEY",
+    ),
+    ModelProfile(
+        id="openrouter-claude-sonnet-5",
+        name="anthropic/claude-sonnet-5 (OpenRouter)",
+        provider="openrouter",
+        model="anthropic/claude-sonnet-5",
+        base_url="https://openrouter.ai/api/v1",
+        context_window=1_000_000,
+        description="Claude Sonnet 5 via OpenRouter",
+        api_key_env="OPENROUTER_API_KEY",
+    ),
 )
 
 
@@ -137,6 +187,7 @@ PROVIDER_DEFAULTS: dict[str, tuple[str, str, int]] = {
     "deepseek": ("DeepSeek", "https://api.deepseek.com", 1_000_000),
     "glm": ("GLM / Zhipu", "https://open.bigmodel.cn/api/paas/v4", 200_000),
     "openai-compatible": ("OpenAI-compatible", "https://api.openai.com/v1", 128_000),
+    "openrouter": ("OpenRouter", "https://openrouter.ai/api/v1", 1_048_576),
 }
 
 PROVIDER_API_KEY_ENVS: dict[str, tuple[str, ...]] = {
@@ -145,6 +196,7 @@ PROVIDER_API_KEY_ENVS: dict[str, tuple[str, ...]] = {
     "zhipu": ("ZAI_API_KEY", "GLM_API_KEY"),
     "openai": ("OPENAI_API_KEY",),
     "openai-compatible": ("OPENAI_API_KEY",),
+    "openrouter": ("OPENROUTER_API_KEY",),
 }
 
 

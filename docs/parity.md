@@ -46,7 +46,7 @@ This document tracks the capabilities implemented in the Python package and the 
   - Multi-Agent orchestration with Planner, Workers, Reviewer, bounded retry, and per-worker `react|plan` mode
   - isolated skill context per sub-agent and parallel plan task
   - SDK entry point for ReAct, Plan, and Team modes
-  - pre/post side-history snapshots around agent runs
+  - one lazy snapshot per request, taken before its first approved write
 - Configuration:
   - built-in defaults
   - user config
@@ -79,7 +79,7 @@ This document tracks the capabilities implemented in the Python package and the 
   - static project memory files `AGENTS.md`, `AGENTCLI.md`, `.agentcli/AGENTCLI.md`, and local variants
   - governed SQLite dynamic memory with metadata, deduplication, TTL, quota, access tracking, and relevance recall
   - request-specific Top-K recall plus model-initiated `search_memory`
-  - bounded short-term history and deterministic compression
+  - bounded short-term history and layered compression (tool-result clearing, LLM rolling summary, extractive fallback)
 - Skills:
   - built-in, user, and project skill layers
   - user/project `.agentcli/skills/*/SKILL.md`

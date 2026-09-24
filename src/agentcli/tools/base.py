@@ -27,6 +27,10 @@ class ToolContext:
         None
     )
     skill_context_buffer: Any | None = None
+    # Resolved path -> mtime_ns when this agent last read or wrote the file.
+    file_state: dict[str, int] = field(default_factory=dict)
+    # Shared by everything one user request runs (workers, plan tasks); see TurnSnapshot.
+    turn_snapshot: Any | None = None
 
 
 @dataclass(slots=True)
@@ -41,6 +45,9 @@ class Tool:
     requires_approval: bool = False
     timeout: float = 60.0
     required_keys: list[str] = field(default_factory=list)
+    # Deferred tools are left out of the definitions sent to the model until load_tools
+    # activates them, so a large MCP server costs a line of names, not its full schemas.
+    deferred: bool = False
 
     def definition(self) -> dict[str, Any]:
         return {

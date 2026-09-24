@@ -144,7 +144,7 @@ class RuntimeApiServer:
         self._ensure_llm_key()
         mode = _validate_mode(mode)
         self._append_event(thread_id, "turn.started", {"message": message, "mode": mode})
-        registry, _manager = await build_tool_registry(config=self.config, cwd=self.cwd)
+        registry, manager = await build_tool_registry(config=self.config, cwd=self.cwd)
         engine = QueryEngine(
             llm_client=create_llm_client(self.config.llm),
             tool_registry=registry,
@@ -155,17 +155,23 @@ class RuntimeApiServer:
         text = ""
         events = _engine_events(engine, mode, message, history=history)
         total_tokens = 0
-        async for event in events:
-            event_type = str(event.get("type"))
-            if event_type == "text_delta":
-                text += str(event.get("text") or "")
-                self._append_event(thread_id, "message.delta", {"text": event.get("text") or ""})
-            elif event_type in {"tool_call", "tool_result", "error", "done"}:
-                self._append_event(thread_id, event_type, _jsonable(event))
-                if event_type == "error":
-                    raise event["error"]
-                if event_type == "done":
-                    total_tokens = int(event.get("total_tokens") or 0)
+        try:
+            async for event in events:
+                event_type = str(event.get("type"))
+                if event_type == "text_delta":
+                    text += str(event.get("text") or "")
+                    self._append_event(
+                        thread_id, "message.delta", {"text": event.get("text") or ""}
+                    )
+                elif event_type in {"tool_call", "tool_result", "error", "done"}:
+                    self._append_event(thread_id, event_type, _jsonable(event))
+                    if event_type == "error":
+                        raise event["error"]
+                    if event_type == "done":
+                        total_tokens = int(event.get("total_tokens") or 0)
+        finally:
+            if manager:
+                await manager.aclose()
         self._append_thread_message(thread_id, "user", message)
         self._append_thread_message(thread_id, "assistant", text)
         self._append_event(
@@ -220,7 +226,7 @@ class RuntimeApiServer:
         self._ensure_llm_key()
         if self.task_manager.is_canceled(task.id):
             raise TaskCanceledError(task.id)
-        registry, _manager = await build_tool_registry(config=self.config, cwd=self.cwd)
+        registry, manager = await build_tool_registry(config=self.config, cwd=self.cwd)
         engine = QueryEngine(
             llm_client=create_llm_client(self.config.llm),
             tool_registry=registry,
@@ -228,13 +234,17 @@ class RuntimeApiServer:
             cwd=self.cwd,
         )
         text = ""
-        async for event in _engine_events(engine, task.mode, task.prompt):
-            if self.task_manager.is_canceled(task.id):
-                raise TaskCanceledError(task.id)
-            if event.get("type") == "text_delta":
-                text += str(event.get("text") or "")
-            elif event.get("type") == "error":
-                raise event["error"]
+        try:
+            async for event in _engine_events(engine, task.mode, task.prompt):
+                if self.task_manager.is_canceled(task.id):
+                    raise TaskCanceledError(task.id)
+                if event.get("type") == "text_delta":
+                    text += str(event.get("text") or "")
+                elif event.get("type") == "error":
+                    raise event["error"]
+        finally:
+            if manager:
+                await manager.aclose()
         return text
 
     def _ensure_llm_key(self) -> None:

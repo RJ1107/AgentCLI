@@ -44,19 +44,31 @@ class Usage:
         completion_details = value.get("completion_tokens_details")
         if not isinstance(completion_details, dict):
             completion_details = {}
+        prompt_details = value.get("prompt_tokens_details")
+        if not isinstance(prompt_details, dict):
+            prompt_details = {}
+        input_tokens = _first_int(value, "input_tokens", "prompt_tokens")
+        # DeepSeek reports hits and misses directly; the OpenAI-standard shape (also used by
+        # OpenRouter) reports only prompt_tokens_details.cached_tokens, so misses are derived.
+        cache_hit_tokens = _first_int(
+            value,
+            "cache_hit_tokens",
+            "prompt_cache_hit_tokens",
+            fallback=prompt_details.get("cached_tokens"),
+        )
+        standard_shape = not any(
+            key in value for key in ("cache_miss_tokens", "prompt_cache_miss_tokens")
+        ) and ("cached_tokens" in prompt_details)
+        cache_miss_tokens = (
+            max(0, input_tokens - cache_hit_tokens)
+            if standard_shape
+            else _first_int(value, "cache_miss_tokens", "prompt_cache_miss_tokens")
+        )
         return cls(
-            input_tokens=_first_int(value, "input_tokens", "prompt_tokens"),
+            input_tokens=input_tokens,
             output_tokens=_first_int(value, "output_tokens", "completion_tokens"),
-            cache_hit_tokens=_first_int(
-                value,
-                "cache_hit_tokens",
-                "prompt_cache_hit_tokens",
-            ),
-            cache_miss_tokens=_first_int(
-                value,
-                "cache_miss_tokens",
-                "prompt_cache_miss_tokens",
-            ),
+            cache_hit_tokens=cache_hit_tokens,
+            cache_miss_tokens=cache_miss_tokens,
             reasoning_tokens=_first_int(
                 value,
                 "reasoning_tokens",

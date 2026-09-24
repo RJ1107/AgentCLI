@@ -172,30 +172,36 @@ async def start_repl(cwd: str, config: AgentCliConfig) -> None:
         key_bindings=_permission_key_bindings(permission_mode),
     )
 
-    while True:
-        try:
-            user_input = await session.prompt_async()
-        except (EOFError, KeyboardInterrupt):
-            console.print()
-            return
-        message = user_input.strip()
-        if not message:
-            continue
-        if message.startswith("/"):
-            should_exit = await _handle_slash(
-                message,
-                console,
-                cwd,
-                config,
-                agent,
-                registry,
-                permission_mode,
-                renderer,
-            )
-            if should_exit:
+    try:
+        while True:
+            try:
+                user_input = await session.prompt_async()
+            except (EOFError, KeyboardInterrupt):
+                console.print()
                 return
-            continue
-        await _run_agent(agent, renderer, message)
+            message = user_input.strip()
+            if not message:
+                continue
+            if message.startswith("/"):
+                should_exit = await _handle_slash(
+                    message,
+                    console,
+                    cwd,
+                    config,
+                    agent,
+                    registry,
+                    permission_mode,
+                    renderer,
+                )
+                if should_exit:
+                    return
+                continue
+            await _run_agent(agent, renderer, message)
+    finally:
+        # MCP servers stay connected for the whole session (a browser keeps its page between
+        # tool calls); stop them, and the browsers they launched, on the way out.
+        if mcp_manager:
+            await mcp_manager.aclose()
 
 
 async def _run_agent(agent: Agent, renderer: RichRenderer, message: str) -> None:

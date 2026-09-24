@@ -33,7 +33,10 @@ def get_builtin_tools() -> list[Tool]:
         ),
         Tool(
             name="write_file",
-            description="Write a UTF-8 text file inside the current workspace.",
+            description=(
+                "Write a UTF-8 text file inside the current workspace. To overwrite an existing "
+                "file, read it first; prefer edit_file for partial changes."
+            ),
             parameters=object_schema(
                 {
                     "path": {"type": "string", "description": "Path to write"},
@@ -47,12 +50,14 @@ def get_builtin_tools() -> list[Tool]:
             is_read_only=False,
             is_concurrency_safe=False,
             danger_level="medium",
+            requires_approval=True,
         ),
         Tool(
             name="edit_file",
             description=(
-                "Make line-based edits to a text file. Each edit replaces exact line sequences "
-                "with new content. Returns a git-style diff showing the changes made."
+                "Replace exact text in a file. The file must have been read first. old_text must "
+                "match exactly once unless replace_all is true; include surrounding lines to "
+                "make it unique. Returns a diff of the change."
             ),
             parameters=object_schema(
                 {
@@ -64,6 +69,10 @@ def get_builtin_tools() -> list[Tool]:
                     "new_text": {
                         "type": "string",
                         "description": "Text to replace with",
+                    },
+                    "replace_all": {
+                        "type": "boolean",
+                        "description": "Replace every occurrence instead of exactly one",
                     },
                     "dry_run": {
                         "type": "boolean",
@@ -77,6 +86,7 @@ def get_builtin_tools() -> list[Tool]:
             is_read_only=False,
             is_concurrency_safe=False,
             danger_level="medium",
+            requires_approval=True,
         ),
         Tool(
             name="list_dir",
@@ -389,30 +399,87 @@ async def _read_file(payload: dict[str, Any], context: ToolContext) -> ToolResul
         limit=int(payload.get("limit") or 500),
         path_guard_enabled=context.config.policy.path_guard_enabled,
     )
+    if not result.is_error:
+        _remember_file(context, str(payload["path"]))
     return _to_tool_result(result)
 
 
 async def _write_file(payload: dict[str, Any], context: ToolContext) -> ToolResult:
+    append = bool(payload.get("append"))
+    if not append:
+        stale = _stale_file_error(context, str(payload["path"]))
+        if stale:
+            return ToolResult(stale, is_error=True)
     result: FileOpResult = fops.write_file(
         context.cwd,
         str(payload["path"]),
         str(payload["content"]),
-        append=bool(payload.get("append")),
+        append=append,
         path_guard_enabled=context.config.policy.path_guard_enabled,
     )
+    if not result.is_error:
+        _remember_file(context, str(payload["path"]))
     return _to_tool_result(result)
 
 
 async def _edit_file(payload: dict[str, Any], context: ToolContext) -> ToolResult:
+    dry_run = bool(payload.get("dry_run"))
+    if not dry_run:
+        stale = _stale_file_error(context, str(payload["path"]))
+        if stale:
+            return ToolResult(stale, is_error=True)
     result: FileOpResult = fops.edit_file(
         context.cwd,
         str(payload["path"]),
         str(payload["old_text"]),
         str(payload["new_text"]),
         path_guard_enabled=context.config.policy.path_guard_enabled,
-        dry_run=bool(payload.get("dry_run")),
+        dry_run=dry_run,
+        replace_all=bool(payload.get("replace_all")),
     )
+    if not result.is_error and not dry_run:
+        _remember_file(context, str(payload["path"]))
     return _to_tool_result(result)
+
+
+def _file_key(context: ToolContext, path: str) -> tuple[str, int | None]:
+    resolved = fops.resolve_path(context.cwd, path, context.config.policy.path_guard_enabled)
+    try:
+        mtime = resolved.stat().st_mtime_ns if resolved.is_file() else None
+    except OSError:
+        mtime = None
+    return str(resolved), mtime
+
+
+def _remember_file(context: ToolContext, path: str) -> None:
+    key, mtime = _file_key(context, path)
+    if mtime is not None:
+        context.file_state[key] = mtime
+
+
+def _stale_file_error(context: ToolContext, path: str) -> str:
+    """Refuse to change a file whose current content this agent has not seen.
+
+    Without this, a write based on an old read silently discards whatever changed in between:
+    the user's edit in their editor, a formatter run through bash, or a parallel worker.
+    """
+
+    key, mtime = _file_key(context, path)
+    if mtime is None:
+        # New file: nothing to lose. A missing file for edit_file is reported by the edit.
+        return ""
+    seen = context.file_state.get(key)
+    if seen is None:
+        return (
+            f"{path} has not been read in this session. Read it before changing it, so the "
+            "change is based on its current content."
+        )
+    if seen != mtime:
+        return (
+            f"{path} was modified after you last read it (by the user, a command, or another "
+            "agent). Read it again and redo the change against the current content."
+        )
+    return ""
 
 
 async def _list_dir(payload: dict[str, Any], context: ToolContext) -> ToolResult:
@@ -522,7 +589,10 @@ async def _web_fetch(payload: dict[str, Any], _context: ToolContext) -> ToolResu
     try:
         content = await fetch_url(str(payload["url"]), max_length=max_length)
     except Exception as exc:  # noqa: BLE001
-        return ToolResult(f"Fetch error: {exc}", is_error=True)
+        # Some httpx errors (timeouts in particular) stringify to "", which would leave the
+        # model guessing. The type name alone already says what went wrong.
+        detail = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
+        return ToolResult(f"Fetch error: {detail}", is_error=True)
     return ToolResult(content, display_summary=f"Fetched {payload['url']}")
 
 

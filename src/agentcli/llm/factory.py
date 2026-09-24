@@ -12,6 +12,7 @@ PROVIDER_BASE_URLS = {
     "kimi": "https://api.moonshot.cn/v1",
     "moonshot": "https://api.moonshot.cn/v1",
     "step": "https://api.stepfun.com/v1",
+    "openrouter": "https://openrouter.ai/api/v1",
 }
 
 MODEL_CONTEXT_WINDOWS = {
@@ -23,6 +24,11 @@ MODEL_CONTEXT_WINDOWS = {
     "glm-5.2": 200_000,
     "glm-5.1": 200_000,
     "glm-4.7": 200_000,
+    "deepseek/deepseek-v4-flash": 1_048_576,
+    "deepseek/deepseek-v4-pro": 1_048_576,
+    "qwen/qwen3-coder-plus": 1_000_000,
+    "moonshotai/kimi-k2.6": 262_144,
+    "anthropic/claude-sonnet-5": 1_000_000,
 }
 
 

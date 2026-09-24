@@ -38,8 +38,9 @@ def test_context_compresses_old_turns_and_keeps_latest_user_message():
 
     assert result.compressed
     assert result.summarized_messages > 0
-    assert result.messages[0].role == "assistant"
+    assert result.messages[0].role == "user"
     assert "conversation-summary" in str(result.messages[0].content)
+    assert result.messages[1].role == "assistant"
     assert any(
         message.content.startswith("request 7")
         for message in result.messages

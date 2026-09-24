@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from agentcli.config import AgentCliConfig
-from agentcli.context import ContextBudget, ContextWindowManager
+from agentcli.context import ContextBudget, ContextWindowManager, build_summarizer
 from agentcli.image import parse_image_references
 from agentcli.llm.base import LlmClient
 from agentcli.prompt import PromptAssembler
@@ -28,30 +28,40 @@ async def query(
     approval_callback=None,
     skill_context_buffer=None,
     max_turns: int = 20,
+    file_state: dict[str, int] | None = None,
+    turn_snapshot=None,
 ) -> AsyncIterator[dict[str, Any]]:
+    """Run one user request through the ReAct loop.
+
+    Request layout, from most to least stable, so the provider's prefix cache covers as much as
+    possible: static system prompt -> tool definitions -> history -> this request's user message
+    (which carries its own runtime context and recalled memories) -> this request's tool turns.
+    """
+
     original_user_message = user_message
     user_message = _prepend_skill_candidates(user_message, cwd, config)
     user_message = _prepend_skill_context(user_message, skill_context_buffer)
-    messages = [
-        *(history or []),
-        Message(role="user", content=parse_image_references(user_message, cwd)),
-    ]
-    tool_definitions = tool_registry.definitions()
-    executor = ToolExecutor(tool_registry)
-    context = ToolContext(
-        cwd=cwd,
-        config=config,
-        approval_callback=approval_callback,
-        skill_context_buffer=skill_context_buffer,
-    )
-    dynamic_prompt = PromptAssembler(
+    turn_context = PromptAssembler(
         config=config,
         cwd=cwd,
         tool_names=tool_registry.list_names(),
         model=llm_client.model_name,
         provider=llm_client.provider_name,
     ).build_dynamic(original_user_message)
-    effective_system_prompt = f"{system_prompt}\n\n{dynamic_prompt}".strip()
+    user_message = f"{turn_context}\n\n{user_message}"
+    messages = [
+        *(history or []),
+        Message(role="user", content=parse_image_references(user_message, cwd)),
+    ]
+    executor = ToolExecutor(tool_registry)
+    context = ToolContext(
+        cwd=cwd,
+        config=config,
+        approval_callback=approval_callback,
+        skill_context_buffer=skill_context_buffer,
+        file_state=file_state if file_state is not None else {},
+        turn_snapshot=turn_snapshot,
+    )
     context_manager = ContextWindowManager(
         ContextBudget(
             context_window=llm_client.max_context_window,
@@ -63,7 +73,10 @@ async def query(
         max_history_messages=config.memory.max_conversation_history,
         min_recent_messages=config.memory.min_recent_messages,
         summary_max_chars=config.memory.summary_max_chars,
+        keep_recent_tool_results=config.memory.keep_recent_tool_results,
+        min_llm_summary_tokens=config.memory.min_llm_summary_tokens,
     )
+    summarizer = build_summarizer(llm_client, config)
 
     total_usage = Usage()
     turn = 0
@@ -75,26 +88,36 @@ async def query(
         stop_reason = "end_turn"
         turn_usage = Usage()
         tool_states: dict[int, dict[str, Any]] = {}
+        # Re-read every turn: load_tools may have added deferred tools during this request.
+        tool_definitions = tool_registry.definitions()
 
         if config.features.context_compression:
-            compression = context_manager.prepare(
+            compression = await context_manager.prepare_async(
                 messages,
-                system_prompt=effective_system_prompt,
+                system_prompt=system_prompt,
                 tool_definitions=tool_definitions,
+                summarizer=summarizer,
             )
             messages = compression.messages
+            if summarizer:
+                summary_usage = summarizer.take_usage()
+                if summary_usage.total_tokens:
+                    total_usage = total_usage + summary_usage
+                    yield {"type": "usage", "usage": summary_usage.to_dict(), "phase": "summary"}
             if compression.compressed:
                 yield {
                     "type": "context_compressed",
                     "before_tokens": compression.estimated_tokens_before,
                     "after_tokens": compression.estimated_tokens_after,
                     "summarized_messages": compression.summarized_messages,
+                    "cleared_tool_results": compression.cleared_tool_results,
+                    "method": compression.method,
                 }
 
         async for event in llm_client.chat(
             messages,
             tool_definitions,
-            system_prompt=effective_system_prompt,
+            system_prompt=system_prompt,
         ):
             event_type = event.get("type")
             if event_type == "text_delta":

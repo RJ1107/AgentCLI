@@ -15,20 +15,16 @@ progress incrementally.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Callable
-from contextlib import suppress
 from typing import Any, Literal
 
 from agentcli.agent.orchestrator import AgentOrchestrator
 from agentcli.agent.plan_execute import PlanExecuteAgent
+from agentcli.agent.query import query
 from agentcli.config import AgentCliConfig
-from agentcli.context import ContextBudget, ContextWindowManager
-from agentcli.image import parse_image_references
 from agentcli.llm.base import LlmClient
 from agentcli.prompt import PromptAssembler
-from agentcli.skill import SkillContextBuffer, SkillRegistry
-from agentcli.snapshot import SnapshotService
-from agentcli.tools.base import ToolContext
-from agentcli.tools.executor import ToolExecutor
+from agentcli.skill import SkillContextBuffer
+from agentcli.snapshot import TurnSnapshot
 from agentcli.tools.registry import ToolRegistry
 from agentcli.types import Message, QueryResult, Usage
 
@@ -93,6 +89,8 @@ class Agent:
         # Conversation state.
         self.history: list[Message] = []
         self.skill_context_buffer = SkillContextBuffer()
+        # Path -> mtime_ns at last read/write. Edits to files changed since then are refused.
+        self.file_state: dict[str, int] = {}
 
         # Accumulated usage / cost across all turns of the session.
         self.last_usage = Usage()
@@ -131,23 +129,15 @@ class Agent:
             {"type": "done", "total_turns": int, "total_tokens": int,
              "usage": {...}, "cost": {...}, "messages": [Message, ...]}
         """
-        snapshot = SnapshotService(self.cwd)
-        with suppress(Exception):
-            snapshot.create("pre-turn")
-
-        try:
-            if self.mode == "plan":
-                async for event in self._run_plan(message):
-                    yield event
-            elif self.mode == "team":
-                async for event in self._run_team(message):
-                    yield event
-            else:
-                async for event in self._run_react(message):
-                    yield event
-        finally:
-            with suppress(Exception):
-                snapshot.create("post-turn")
+        turn_snapshot = TurnSnapshot(self.cwd)
+        if self.mode == "plan":
+            runner = self._run_plan(message, turn_snapshot)
+        elif self.mode == "team":
+            runner = self._run_team(message, turn_snapshot)
+        else:
+            runner = self._run_react(message, turn_snapshot)
+        async for event in runner:
+            yield event
 
     async def run_complete(self, message: str) -> QueryResult:
         """Run the agent synchronously (collect all events) and return a result."""
@@ -177,6 +167,7 @@ class Agent:
         """Reset conversation history and skill context buffer."""
         self.history = []
         self.skill_context_buffer.clear()
+        self.file_state.clear()
         self.last_usage = Usage()
         self.last_cost = {}
 
@@ -184,185 +175,34 @@ class Agent:
     # Mode runners
     # ------------------------------------------------------------------
 
-    async def _run_react(self, message: str) -> AsyncIterator[dict[str, Any]]:
+    async def _run_react(
+        self, message: str, turn_snapshot: TurnSnapshot | None = None
+    ) -> AsyncIterator[dict[str, Any]]:
         """Standard ReAct loop (the default and most common mode)."""
-        # Prepend skill candidates that match the user message.
-        original = message
-        message = _prepend_skill_candidates(message, self.cwd, self.config)
-        message = _prepend_skill_context(message, self.skill_context_buffer)
-
-        messages = [
-            *(self.history or []),
-            Message(role="user", content=parse_image_references(message, self.cwd)),
-        ]
-
-        tool_defs = self.tool_registry.definitions()
-        executor = ToolExecutor(self.tool_registry)
-        context = ToolContext(
+        async for event in query(
+            llm_client=self.llm_client,
+            tool_registry=self.tool_registry,
+            system_prompt=self.system_prompt,
+            user_message=message,
+            history=self.history,
             cwd=self.cwd,
             config=self.config,
             approval_callback=self.approval_callback,
             skill_context_buffer=self.skill_context_buffer,
-        )
+            max_turns=self.max_turns,
+            file_state=self.file_state,
+            turn_snapshot=turn_snapshot,
+        ):
+            if event.get("type") == "done":
+                # Persist the (possibly compacted) history for the next user message.
+                self.history = list(event.get("messages") or [])
+                self.last_usage = Usage.from_mapping(event.get("usage") or {})
+                self.last_cost = dict(event.get("cost") or {})
+            yield event
 
-        # Build the dynamic part of the system prompt (tool list, cwd, etc.).
-        dynamic_prompt = PromptAssembler(
-            config=self.config,
-            cwd=self.cwd,
-            tool_names=self.tool_registry.list_names(),
-            model=self.llm_client.model_name,
-            provider=self.llm_client.provider_name,
-        ).build_dynamic(original)
-
-        effective_system = f"{self.system_prompt}\n\n{dynamic_prompt}".strip()
-
-        # Context-window manager for history compression.
-        context_manager = ContextWindowManager(
-            ContextBudget(
-                context_window=self.llm_client.max_context_window,
-                max_output_tokens=self.config.llm.max_tokens,
-                compression_threshold=self.config.memory.compression_threshold,
-                compression_target=self.config.memory.compression_target,
-                reserve_tokens=self.config.memory.compression_reserve_tokens,
-            ),
-            max_history_messages=self.config.memory.max_conversation_history,
-            min_recent_messages=self.config.memory.min_recent_messages,
-            summary_max_chars=self.config.memory.summary_max_chars,
-        )
-
-        total_usage = Usage()
-        turn = 0
-
-        while turn < self.max_turns:
-            turn += 1
-            text = ""
-            thinking = ""
-            stop_reason = "end_turn"
-            turn_usage = Usage()
-            tool_states: dict[int, dict[str, Any]] = {}
-
-            # Compress if needed.
-            if self.config.features.context_compression:
-                compression = context_manager.prepare(
-                    messages,
-                    system_prompt=effective_system,
-                    tool_definitions=tool_defs,
-                )
-                messages = compression.messages
-                if compression.compressed:
-                    yield {
-                        "type": "context_compressed",
-                        "before_tokens": compression.estimated_tokens_before,
-                        "after_tokens": compression.estimated_tokens_after,
-                        "summarized_messages": compression.summarized_messages,
-                    }
-
-            # Call the LLM.
-            async for event in self.llm_client.chat(
-                messages,
-                tool_defs,
-                system_prompt=effective_system,
-            ):
-                event_type = event.get("type")
-                if event_type == "text_delta":
-                    delta = str(event.get("text") or "")
-                    text += delta
-                    yield {"type": "text_delta", "text": delta}
-                elif event_type == "thinking_delta":
-                    delta = str(event.get("thinking") or "")
-                    thinking += delta
-                    yield {"type": "thinking_delta", "thinking": delta}
-                elif event_type == "tool_call_delta":
-                    _merge_tool_delta(tool_states, event["tool_call"])
-                elif event_type == "message_end":
-                    stop_reason = str(event.get("stop_reason") or "end_turn")
-                elif event_type == "usage":
-                    usage = Usage.from_mapping(event.get("usage") or {})
-                    turn_usage = turn_usage + usage
-                    yield {"type": "usage", "usage": usage.to_dict()}
-                elif event_type == "error":
-                    yield {"type": "error", "error": event["error"]}
-                    return
-
-            total_usage = total_usage + turn_usage
-            tool_calls = _finalize_tool_calls(tool_states)
-            assistant_msg = Message(
-                role="assistant",
-                content=text or "",
-                tool_calls=tool_calls,
-            )
-            if thinking and not text:
-                assistant_msg.content = ""
-            messages.append(assistant_msg)
-            yield {"type": "turn_complete", "turn": turn, "stop_reason": stop_reason}
-
-            # If the model didn't request any tools, we're done.
-            if stop_reason != "tool_use" and not tool_calls:
-                break
-
-            # Run tools.
-            for call in tool_calls:
-                name = call.get("function", {}).get("name", "unknown")
-                yield {"type": "tool_call", "name": name, "input": _tool_input(call)}
-
-            tool_results = await executor.execute_all(tool_calls, context)
-            loaded_skill_context = _drain_skill_context(self.skill_context_buffer)
-            load_skill_ids = [
-                str(call.get("id") or "")
-                for call in tool_calls
-                if str(call.get("function", {}).get("name") or "") == "load_skill"
-            ]
-            injection_target = load_skill_ids[-1] if load_skill_ids else ""
-            injected = False
-
-            for result in tool_results:
-                yield {
-                    "type": "tool_result",
-                    "name": _tool_name_by_id(tool_calls, result.tool_use_id or ""),
-                    "result": result.content,
-                    "is_error": result.is_error,
-                }
-                model_content = result.content
-                if loaded_skill_context and result.tool_use_id == injection_target:
-                    model_content = f"{model_content}\n\n{loaded_skill_context}"
-                    injected = True
-                messages.append(
-                    Message(
-                        role="tool",
-                        content=model_content,
-                        tool_call_id=result.tool_use_id,
-                    )
-                )
-
-            if loaded_skill_context and not injected:
-                messages.append(
-                    Message(
-                        role="user",
-                        content=(
-                            f"{loaded_skill_context}\n\n"
-                            "Use these loaded instructions to continue the current request."
-                        ),
-                    )
-                )
-
-        # Persist history for next user message and report final usage.
-        self.history = list(messages)
-        self.last_usage = total_usage
-
-        done_event: dict[str, Any] = {
-            "type": "done",
-            "total_turns": turn,
-            "total_tokens": total_usage.total_tokens,
-            "usage": total_usage.to_dict(),
-            "messages": self.history,
-        }
-        costs = _calculate_costs(self.llm_client, total_usage)
-        if costs:
-            done_event["cost"] = costs
-            self.last_cost = costs
-        yield done_event
-
-    async def _run_plan(self, message: str) -> AsyncIterator[dict[str, Any]]:
+    async def _run_plan(
+        self, message: str, turn_snapshot: TurnSnapshot | None = None
+    ) -> AsyncIterator[dict[str, Any]]:
         """Plan-then-execute mode: the planner creates a DAG, then workers run it."""
         agent = PlanExecuteAgent(
             llm_client=self.llm_client,
@@ -371,6 +211,7 @@ class Agent:
             cwd=self.cwd,
             approval_callback=self.approval_callback,
             max_task_turns=self.max_turns,
+            turn_snapshot=turn_snapshot,
         )
         agent.history = list(self.history)
 
@@ -381,7 +222,9 @@ class Agent:
                 self.last_cost = dict(event.get("cost") or {})
             yield event
 
-    async def _run_team(self, message: str) -> AsyncIterator[dict[str, Any]]:
+    async def _run_team(
+        self, message: str, turn_snapshot: TurnSnapshot | None = None
+    ) -> AsyncIterator[dict[str, Any]]:
         """Multi-agent team mode: planner → parallel workers → reviewer."""
         orchestrator = AgentOrchestrator(
             llm_client=self.llm_client,
@@ -390,6 +233,7 @@ class Agent:
             cwd=self.cwd,
             approval_callback=self.approval_callback,
             default_worker_mode="react",
+            turn_snapshot=turn_snapshot,
         )
         async for event in orchestrator.run(message):
             if event.get("type") == "done":
@@ -416,103 +260,3 @@ class Agent:
                 "Set an AGENTCLI_CONTEXT_WINDOW environment variable or configure "
                 "it in ~/.agentcli/config.json."
             )
-
-
-# ------------------------------------------------------------------
-# Shared helpers (also used by query.py)
-# ------------------------------------------------------------------
-
-
-def _merge_tool_delta(tool_states: dict[int, dict[str, Any]], delta: dict[str, Any]) -> None:
-    index = int(delta.get("index") or 0)
-    state = tool_states.setdefault(
-        index,
-        {
-            "id": delta.get("id") or f"tool_{index}",
-            "type": "function",
-            "function": {"name": "", "arguments": ""},
-        },
-    )
-    if delta.get("id"):
-        state["id"] = delta["id"]
-    function = delta.get("function") or {}
-    if function.get("name"):
-        state["function"]["name"] = function["name"]
-    if function.get("arguments"):
-        state["function"]["arguments"] += function["arguments"]
-
-
-def _finalize_tool_calls(tool_states: dict[int, dict[str, Any]]) -> list[dict[str, Any]]:
-    calls = []
-    for index in sorted(tool_states):
-        state = tool_states[index]
-        if state["function"]["name"]:
-            calls.append(state)
-    return calls
-
-
-def _tool_input(call: dict[str, Any]) -> dict[str, Any]:
-    import json
-
-    raw = call.get("function", {}).get("arguments") or "{}"
-    try:
-        parsed = json.loads(raw)
-    except json.JSONDecodeError:
-        return {"raw": raw}
-    return parsed if isinstance(parsed, dict) else {"value": parsed}
-
-
-def _tool_name_by_id(calls: list[dict[str, Any]], tool_call_id: str) -> str:
-    for call in calls:
-        if call.get("id") == tool_call_id:
-            return str(call.get("function", {}).get("name") or "unknown")
-    return "unknown"
-
-
-def _prepend_skill_candidates(user_message: str, cwd: str, config: AgentCliConfig) -> str:
-    if not config.features.skill:
-        return user_message
-    candidates = SkillRegistry(cwd).match(user_message, top_k=5)
-    if not candidates:
-        return user_message
-    lines = [
-        "Relevant skill candidates for this request:",
-        "Call load_skill(name) before proceeding when a candidate applies.",
-    ]
-    for skill in candidates:
-        description = " ".join(skill.description.split())
-        if len(description) > 300:
-            description = description[:297] + "..."
-        tags = f" [tags: {', '.join(skill.tags)}]" if skill.tags else ""
-        lines.append(f"- {skill.name}: {description}{tags}")
-    candidate_text = "\n".join(lines)
-    return f"{candidate_text}\n\n---\nUser request:\n{user_message}"
-
-
-def _prepend_skill_context(user_message: str, skill_context_buffer: SkillContextBuffer) -> str:
-    if not skill_context_buffer or skill_context_buffer.is_empty():
-        return user_message
-    drained = skill_context_buffer.drain()
-    if not drained:
-        return user_message
-    return f"{drained}\n\n---\nUser request:\n{user_message}"
-
-
-def _drain_skill_context(skill_context_buffer: SkillContextBuffer) -> str:
-    if not skill_context_buffer or skill_context_buffer.is_empty():
-        return ""
-    return skill_context_buffer.drain()
-
-
-def _calculate_costs(llm_client: LlmClient, usage: Usage) -> dict[str, Any]:
-    calculator = getattr(llm_client, "calculate_cost", None)
-    if not callable(calculator):
-        return {}
-    result: dict[str, Any] = {}
-    for currency in ("usd", "cny"):
-        try:
-            breakdown = calculator(usage, currency=currency)
-        except (KeyError, TypeError, ValueError):
-            continue
-        result[currency] = breakdown.to_dict()
-    return result

@@ -20,6 +20,13 @@ class McpServerSpec:
     headers: dict[str, str] = field(default_factory=dict)
     enabled: bool = True
     timeout: float = 30.0
+    # Whether this server's own readOnlyHint may skip approval. A server describes itself;
+    # only a server the user vouches for should be believed.
+    trusted: bool = False
+    # Deferred tools cost only their names in each request until the model loads them.
+    defer: bool = True
+    # One line on what the server is for, shown in the load_tools index.
+    description: str = ""
 
 
 def load_mcp_server_specs(project_root: str | Path) -> dict[str, McpServerSpec]:
@@ -39,36 +46,81 @@ def load_mcp_server_specs(project_root: str | Path) -> dict[str, McpServerSpec]:
     }
 
 
+# Pinned so the browser server only changes when AgentCLI is updated on purpose; "@latest"
+# would run whatever npm serves that day.
+CHROME_DEVTOOLS_MCP_VERSION = "1.10.1"
+
+
+# The visible browser's profile: kept between sessions so logins survive, and separate from
+# the user's own Chrome so the agent only ever holds the logins made here on purpose.
+AGENT_BROWSER_PROFILE = "${HOME}/.agentcli/browser-profile"
+
+
 def write_chrome_devtools_config(
     *,
     scope_root: str | Path | None = None,
     browser_url: str | None = None,
-    headless: bool = False,
+    headless: bool = True,
     slim: bool = False,
     no_usage_statistics: bool = True,
+    isolated: bool = True,
+    visible: bool = True,
 ) -> Path:
+    """Write two browser servers, both deferred and started only when first used.
+
+    - chrome-devtools: headless, blank throwaway profile; for public pages that only need
+      JavaScript to render.
+    - chrome-visible: a window the user can see and use, with a persistent AgentCLI-only
+      profile; for login walls and bot checks, where the user signs in or completes the check
+      themselves.
+    """
+
     root = Path(scope_root).resolve() if scope_root else Path.home()
     config_dir = root / ".agentcli"
     config_dir.mkdir(parents=True, exist_ok=True)
     path = config_dir / "mcp.json"
     data = _read_json(path) or {"mcpServers": {}}
     servers = data.setdefault("mcpServers", {})
-    args = ["-y", "chrome-devtools-mcp@latest"]
+    base = ["-y", f"chrome-devtools-mcp@{CHROME_DEVTOOLS_MCP_VERSION}"]
     if no_usage_statistics:
-        args.append("--no-usage-statistics")
+        base.extend(["--no-usage-statistics", "--no-performance-crux"])
     if slim:
-        args.append("--slim")
+        base.append("--slim")
+
+    args = list(base)
     if headless:
         args.append("--headless")
     if browser_url:
         args.append(f"--browser-url={browser_url}")
-    servers["chrome-devtools"] = {
+    elif isolated:
+        # A throwaway profile: this browser never sees any logins, cookies, or history.
+        args.append("--isolated")
+    servers["chrome-devtools"] = _browser_entry(
+        args,
+        "background browser, blank profile each session: public pages that need JavaScript",
+    )
+    if visible:
+        servers["chrome-visible"] = _browser_entry(
+            [*base, f"--userDataDir={AGENT_BROWSER_PROFILE}"],
+            "visible browser with a saved AgentCLI-only profile: pages behind a login or bot "
+            "check; the user signs in and completes any CAPTCHA themselves",
+        )
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def _browser_entry(args: list[str], description: str) -> dict[str, Any]:
+    return {
         "type": "stdio",
         "command": "npx",
         "args": args,
+        "description": description,
+        # First start downloads the package and launches Chrome.
+        "timeout": 120,
+        # Official Google server: its own read-only hints (list_pages, wait_for) may skip
+        # approval. Navigation, snapshots, clicks, and scripts still ask.
+        "trusted": True,
     }
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return path
 
 
 def _read_json(path: Path) -> dict[str, Any] | None:
@@ -103,6 +155,9 @@ def _spec_from_raw(name: str, raw: dict[str, Any], project_root: Path) -> McpSer
         },
         enabled=bool(raw.get("enabled", True)),
         timeout=float(raw.get("timeout", raw.get("startup_timeout", 30.0)) or 30.0),
+        trusted=bool(raw.get("trusted", False)),
+        defer=bool(raw.get("defer", True)),
+        description=str(raw.get("description") or ""),
     )
 
 
