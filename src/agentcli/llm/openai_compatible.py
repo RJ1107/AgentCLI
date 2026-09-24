@@ -206,7 +206,9 @@ class OpenAICompatibleClient:
             choice = choices[0]
             delta = choice.get("delta") or {}
 
-            reasoning = delta.get("reasoning_content")
+            # DeepSeek streams its thinking as reasoning_content; OpenRouter normalizes every
+            # provider's (OpenAI, Anthropic, Google, ...) to reasoning.
+            reasoning = delta.get("reasoning_content") or delta.get("reasoning")
             if isinstance(reasoning, str) and reasoning:
                 yield {"type": "thinking_delta", "thinking": reasoning}
 

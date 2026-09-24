@@ -99,6 +99,8 @@ Provider-specific keys currently include:
 - `STEP_API_KEY`
 - `KIMI_API_KEY`
 
+With one `OPENROUTER_API_KEY`, `/model` offers a checked set of OpenRouter models: GPT-6 Astra, Sol and Luna, Claude Opus 5.5, DeepSeek V4 Flash / V4.1 Flash / V4 Pro 0813, GLM-5.3 and GLM-5.3 Flash, Qwen3.8 Flash, and Gemini 3.8 Flash. Each passed a tool-calling run through AgentCLI before being listed, and each carries OpenRouter's published prices (dated in `llm/pricing.py`), so `/usage` and the idle reminder can show costs. Any other OpenRouter model id works too, without built-in prices.
+
 Temporarily override provider and model:
 
 ```bash

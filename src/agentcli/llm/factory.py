@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from agentcli.config import LlmConfig
 from agentcli.llm.openai_compatible import OpenAICompatibleClient
-from agentcli.llm.pricing import resolve_price_profile
+from agentcli.llm.pricing import OPENROUTER_PRICE_PROFILES, resolve_price_profile
 
 DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
 OPENAI_BASE_URL = "https://api.openai.com/v1"
@@ -24,11 +24,6 @@ MODEL_CONTEXT_WINDOWS = {
     "glm-5.2": 200_000,
     "glm-5.1": 200_000,
     "glm-4.7": 200_000,
-    "deepseek/deepseek-v4-flash": 1_048_576,
-    "deepseek/deepseek-v4-pro": 1_048_576,
-    "qwen/qwen3-coder-plus": 1_000_000,
-    "moonshotai/kimi-k2.6": 262_144,
-    "anthropic/claude-sonnet-5": 1_000_000,
 }
 
 
@@ -73,7 +68,13 @@ def create_llm_client(config: LlmConfig) -> OpenAICompatibleClient:
             ),
         )
     if provider in PROVIDER_BASE_URLS:
-        context = config.context_window or MODEL_CONTEXT_WINDOWS.get(config.model.lower(), 128_000)
+        # OpenRouter models in the built-in catalog carry their context window and prices.
+        catalog = OPENROUTER_PRICE_PROFILES.get(config.model.lower())
+        context = (
+            config.context_window
+            or MODEL_CONTEXT_WINDOWS.get(config.model.lower())
+            or (catalog.context_window if catalog else 128_000)
+        )
         return OpenAICompatibleClient(
             provider_name=provider,
             model=config.model,
@@ -88,7 +89,7 @@ def create_llm_client(config: LlmConfig) -> OpenAICompatibleClient:
                 config.model,
                 context_window=context,
                 overrides=config.prices,
-                include_builtin=False,
+                include_builtin=catalog is not None,
             ),
         )
     context = config.context_window or 64_000

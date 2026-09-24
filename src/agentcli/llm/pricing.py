@@ -100,8 +100,45 @@ DEEPSEEK_V4_PRICE_PROFILES: dict[str, ModelPriceProfile] = {
 }
 
 
+OPENROUTER_PRICING_SOURCE = "https://openrouter.ai/api/v1/models"
+OPENROUTER_PRICING_AS_OF = "2026-09-24"
+
+# The OpenRouter models offered in /model: (id, context window, input, cached input, output),
+# prices in USD per 1M tokens, generated from OpenRouter's models API on the date above. Each
+# one was checked end to end with a tool call through AgentCLI before being listed.
+OPENROUTER_CATALOG: tuple[tuple[str, int, float, float, float], ...] = (
+    ("openai/gpt-6-astra", 1_050_000, 10.0, 1.0, 50.0),
+    ("openai/gpt-6-sol", 1_050_000, 2.0, 0.2, 10.0),
+    ("openai/gpt-6-luna", 1_050_000, 0.1, 0.01, 0.5),
+    ("anthropic/claude-opus-5.5", 1_000_000, 4.0, 0.2, 20.0),
+    ("deepseek/deepseek-v4-flash", 1_048_576, 0.088606, 0.017721, 0.177212),
+    ("deepseek/deepseek-v4.1-flash", 1_048_576, 0.14, 0.0042, 0.42),
+    ("deepseek/deepseek-v4-pro-0813", 1_048_576, 0.462, 0.0154, 1.386),
+    ("z-ai/glm-5.3", 1_310_720, 0.84, 0.156, 2.64),
+    ("z-ai/glm-5.3-flash", 1_310_720, 0.15, 0.05, 0.5),
+    ("qwen/qwen3.8-flash", 1_000_000, 0.15, 0.016, 0.47),
+    ("google/gemini-3.8-flash", 1_048_576, 0.75, 0.075, 3.75),
+)
+
+OPENROUTER_PRICE_PROFILES: dict[str, ModelPriceProfile] = {
+    model: ModelPriceProfile(
+        model=model,
+        context_window=context,
+        prices={
+            "usd": PerMillionTokenPrices(
+                input_cache_hit=cached, input_cache_miss=uncached, output=output
+            )
+        },
+        as_of=OPENROUTER_PRICING_AS_OF,
+        source_url=OPENROUTER_PRICING_SOURCE,
+    )
+    for model, context, uncached, cached, output in OPENROUTER_CATALOG
+}
+
+
 def get_builtin_price_profile(model: str) -> ModelPriceProfile | None:
-    return DEEPSEEK_V4_PRICE_PROFILES.get(model.lower())
+    key = model.lower()
+    return DEEPSEEK_V4_PRICE_PROFILES.get(key) or OPENROUTER_PRICE_PROFILES.get(key)
 
 
 def resolve_price_profile(

@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from agentcli.llm.model_profiles import DEFAULT_MODEL_PROFILES
+from agentcli.llm.pricing import get_builtin_price_profile
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,7 +44,7 @@ _BUILTIN_MODELS: list[KnownModel] = [
             provider=profile.provider,
             model=profile.model,
             context_window=profile.context_window,
-            pricing="builtin" if profile.provider == "deepseek" else "unknown",
+            pricing="builtin" if get_builtin_price_profile(profile.model) else "unknown",
         )
         for profile in DEFAULT_MODEL_PROFILES
     ),

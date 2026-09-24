@@ -36,19 +36,22 @@ def test_reminder_prices_the_re_read_when_the_model_has_a_price_table(tmp_path):
         LlmConfig(provider="deepseek", model="deepseek-v4-flash", api_key="x")
     )
     openrouter = create_llm_client(
-        LlmConfig(provider="openrouter", model="deepseek/deepseek-v4-flash", api_key="x")
+        LlmConfig(provider="openrouter", model="openai/gpt-6-sol", api_key="x")
+    )
+    unknown = create_llm_client(
+        LlmConfig(provider="openrouter", model="someone/unlisted-model", api_key="x")
     )
 
-    priced = cache_reminder(
-        idle_seconds=2 * HOUR, tokens=150_000, config=config, llm_client=deepseek
-    )
-    unpriced = cache_reminder(
-        idle_seconds=2 * HOUR, tokens=150_000, config=config, llm_client=openrouter
-    )
+    def extra(client) -> str:
+        return cache_reminder(
+            idle_seconds=2 * HOUR, tokens=150_000, config=config, llm_client=client
+        ).extra_cost
 
-    # 150k tokens: ¥1.00/M uncached vs ¥0.02/M cached.
-    assert priced.extra_cost == "¥0.15"
-    assert unpriced.extra_cost == ""
+    # 150k tokens. DeepSeek direct: ¥1.00/M uncached vs ¥0.02/M cached.
+    assert extra(deepseek) == "¥0.15"
+    # GPT-6 Sol via OpenRouter's catalog: $2.00/M vs $0.20/M.
+    assert extra(openrouter) == "$0.27"
+    assert extra(unknown) == ""
 
 
 class _SummarizingClient:

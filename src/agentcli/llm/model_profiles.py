@@ -9,6 +9,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from uuid import uuid4
 
+from agentcli.llm.pricing import OPENROUTER_CATALOG
+
 
 @dataclass(frozen=True, slots=True)
 class ModelProfile:
@@ -79,7 +81,46 @@ class ModelProfile:
         return ""
 
 
+# Name and one-line pitch for each OpenRouter model; ids, context windows and prices come from
+# OPENROUTER_CATALOG so there is one source of truth.
+_OPENROUTER_ABOUT: dict[str, tuple[str, str]] = {
+    "openai/gpt-6-astra": ("GPT-6 Astra", "OpenAI flagship for the hardest long tasks"),
+    "openai/gpt-6-sol": ("GPT-6 Sol", "OpenAI high-end at a fifth of Astra's price"),
+    "openai/gpt-6-luna": ("GPT-6 Luna", "OpenAI fast tier, very cheap"),
+    "anthropic/claude-opus-5.5": ("Claude Opus 5.5", "Anthropic flagship for large codebases"),
+    "deepseek/deepseek-v4-flash": ("DeepSeek V4 Flash", "default: cheapest capable agent model"),
+    "deepseek/deepseek-v4.1-flash": ("DeepSeek V4.1 Flash", "newer Flash, fast, near-free cache"),
+    "deepseek/deepseek-v4-pro-0813": ("DeepSeek V4 Pro 0813", "stronger DeepSeek, August build"),
+    "z-ai/glm-5.3": ("GLM-5.3", "Zhipu flagship for long agent tasks"),
+    "z-ai/glm-5.3-flash": ("GLM-5.3 Flash", "Zhipu budget model"),
+    "qwen/qwen3.8-flash": ("Qwen3.8 Flash", "Alibaba multimodal, cheap"),
+    "google/gemini-3.8-flash": ("Gemini 3.8 Flash", "Google's strongest Flash"),
+}
+
+
+def _price(value: float) -> str:
+    return f"${value:.3g}"
+
+
+_OPENROUTER_PROFILES = tuple(
+    ModelProfile(
+        id=f"openrouter-{model.split('/', 1)[1]}",
+        name=f"{_OPENROUTER_ABOUT[model][0]} (OpenRouter)",
+        provider="openrouter",
+        model=model,
+        base_url="https://openrouter.ai/api/v1",
+        context_window=context,
+        description=(
+            f"{_OPENROUTER_ABOUT[model][1]} · {_price(uncached)} in / {_price(output)} out "
+            f"per 1M tokens"
+        ),
+        api_key_env="OPENROUTER_API_KEY",
+    )
+    for model, context, uncached, _cached, output in OPENROUTER_CATALOG
+)
+
 DEFAULT_MODEL_PROFILES: tuple[ModelProfile, ...] = (
+    # Direct provider APIs: need that provider's own key.
     ModelProfile(
         id="deepseek-v4-flash",
         name="DeepSeek V4 Flash",
@@ -110,76 +151,8 @@ DEFAULT_MODEL_PROFILES: tuple[ModelProfile, ...] = (
         description="Zhipu flagship model for long-running Agent tasks",
         api_key_env="ZAI_API_KEY",
     ),
-    ModelProfile(
-        id="glm-5.1",
-        name="GLM-5.1",
-        provider="glm",
-        model="glm-5.1",
-        base_url="https://open.bigmodel.cn/api/paas/v4",
-        context_window=200_000,
-        description="Zhipu general-purpose coding and reasoning model",
-        api_key_env="ZAI_API_KEY",
-    ),
-    ModelProfile(
-        id="glm-4.7",
-        name="GLM-4.7",
-        provider="glm",
-        model="glm-4.7",
-        base_url="https://open.bigmodel.cn/api/paas/v4",
-        context_window=200_000,
-        description="Agentic coding model with tool calling",
-        api_key_env="ZAI_API_KEY",
-    ),
-    ModelProfile(
-        id="openrouter-deepseek-v4-flash",
-        name="deepseek/deepseek-v4-flash (OpenRouter)",
-        provider="openrouter",
-        model="deepseek/deepseek-v4-flash",
-        base_url="https://openrouter.ai/api/v1",
-        context_window=1_048_576,
-        description="DeepSeek V4 Flash via OpenRouter; cheap default",
-        api_key_env="OPENROUTER_API_KEY",
-    ),
-    ModelProfile(
-        id="openrouter-deepseek-v4-pro",
-        name="deepseek/deepseek-v4-pro (OpenRouter)",
-        provider="openrouter",
-        model="deepseek/deepseek-v4-pro",
-        base_url="https://openrouter.ai/api/v1",
-        context_window=1_048_576,
-        description="DeepSeek V4 Pro via OpenRouter",
-        api_key_env="OPENROUTER_API_KEY",
-    ),
-    ModelProfile(
-        id="openrouter-qwen3-coder-plus",
-        name="qwen/qwen3-coder-plus (OpenRouter)",
-        provider="openrouter",
-        model="qwen/qwen3-coder-plus",
-        base_url="https://openrouter.ai/api/v1",
-        context_window=1_000_000,
-        description="Qwen3 Coder Plus via OpenRouter",
-        api_key_env="OPENROUTER_API_KEY",
-    ),
-    ModelProfile(
-        id="openrouter-kimi-k2.6",
-        name="moonshotai/kimi-k2.6 (OpenRouter)",
-        provider="openrouter",
-        model="moonshotai/kimi-k2.6",
-        base_url="https://openrouter.ai/api/v1",
-        context_window=262_144,
-        description="Kimi K2.6 via OpenRouter",
-        api_key_env="OPENROUTER_API_KEY",
-    ),
-    ModelProfile(
-        id="openrouter-claude-sonnet-5",
-        name="anthropic/claude-sonnet-5 (OpenRouter)",
-        provider="openrouter",
-        model="anthropic/claude-sonnet-5",
-        base_url="https://openrouter.ai/api/v1",
-        context_window=1_000_000,
-        description="Claude Sonnet 5 via OpenRouter",
-        api_key_env="OPENROUTER_API_KEY",
-    ),
+    # One OpenRouter key reaches all of these.
+    *_OPENROUTER_PROFILES,
 )
 
 
