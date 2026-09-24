@@ -29,7 +29,7 @@ def test_banner_renders_rj_home_layout():
         provider="deepseek",
         cwd="/tmp/project",
         tools=12,
-        version="1.2.1",
+        version="1.2.0",
         api_key_configured=True,
         mcp_servers=1,
         skills=3,
@@ -39,8 +39,8 @@ def test_banner_renders_rj_home_layout():
 
     output = stream.getvalue()
     assert "██████       ██" in output
-    assert "'s AgentCLI  v1.2.1" in output
-    assert "/plan  /team" in output
+    assert "'s AgentCLI  v1.2.0" in output
+    assert "/help 查看全部命令" in output
     assert "Signed in" not in output
     assert "未配置 API Key" not in output
 
@@ -53,7 +53,7 @@ def test_banner_warns_when_no_api_key():
         provider="p",
         cwd=".",
         tools=1,
-        version="1.2.1",
+        version="1.2.0",
         api_key_configured=False,
         mcp_servers=0,
         skills=0,
@@ -71,14 +71,14 @@ def test_prompt_message_keeps_status_and_input_together():
         agents_files=2,
         mcp_servers=1,
         skills=3,
-        deferred_tools=68,
+        deferred_tools=34,
         stats={"total_tokens": 13187, "context_ratio": 0.013, "has_usage": True},
     )
     plain = "".join(text for _style, text in prompt)
 
     assert "2 instruction files" in plain
     assert "1 MCP server" in plain
-    assert "3 skills · Tools 12 +68 on demand" in plain
+    assert "3 skills · Tools 12 +34 on demand" in plain
     assert "Default  Shift+Tab" in plain
     assert "deepseek-v4-flash" in plain
     assert "█░░░░░░░░░░░ 1%" in plain
@@ -332,3 +332,51 @@ def test_instruction_file_count_matches_what_the_prompt_loads(tmp_path):
 
     assert assembler.instruction_files() == [(tmp_path / "AGENTCLI.md").resolve()]
     assert "Run pytest before committing." in assembler.build_static()
+
+
+def test_run_summary_names_model_tools_skills_tokens_and_cost():
+    stream = StringIO()
+    renderer = RichRenderer(console=Console(file=stream, color_system=None, width=300))
+    renderer.start_run(model="openai/gpt-6-luna")
+    for name, payload in [
+        ("load_skill", {"name": "finance-qa"}),
+        ("web_search", {"query": "a"}),
+        ("web_search", {"query": "b"}),
+        ("mcp__chrome-visible__navigate_page", {"url": "https://x"}),
+    ]:
+        renderer.handle({"type": "tool_call", "name": name, "input": payload})
+    renderer.handle(
+        {
+            "type": "done",
+            "total_turns": 3,
+            "usage": {"input_tokens": 48_200, "output_tokens": 2_100, "cache_hit_tokens": 31_000},
+            "cost": {"usd": {"total_cost": 0.0123}},
+        }
+    )
+
+    summary = stream.getvalue().strip().splitlines()[-1]
+    assert summary.startswith("✓ openai/gpt-6-luna · 3 model calls · 4 tool calls")
+    assert "web_search×2" in summary
+    assert "chrome-visible/navigate_page" in summary
+    assert "skill finance-qa" in summary
+    assert "48.2k in (31.0k cached) / 2.1k out" in summary
+    assert "$0.012" in summary
+
+
+def test_two_browsers_offering_the_same_tools_count_once():
+    from types import SimpleNamespace
+
+    from agentcli.entrypoints.repl import _on_demand_tool_count
+
+    names = [
+        f"mcp__{server}__{tool}"
+        for server in ("chrome-devtools", "chrome-visible")
+        for tool in ("navigate_page", "click", "take_snapshot")
+    ]
+    tools = [SimpleNamespace(name=name) for name in names]
+    registry = SimpleNamespace(
+        deferred_tools=lambda: tools,
+        is_active=lambda name: name == "mcp__chrome-visible__click",
+    )
+
+    assert _on_demand_tool_count(registry) == 3

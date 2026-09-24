@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import time
+from collections import Counter
 from typing import Any
 
 from rich import box
@@ -37,11 +39,22 @@ class RichRenderer:
         self._last_total_tokens = 0
         self._last_context_ratio = 0.0
         self._last_has_usage = False
+        # Per-run tallies for the one-line summary under each answer.
+        self._run_model = ""
+        self._run_started = 0.0
+        self._run_tools: Counter[str] = Counter()
+        self._run_skills: list[str] = []
+        self._cache_hit_tokens = 0
 
     def set_context_window(self, context_window: int | None) -> None:
         self._context_window = context_window or self._context_window
 
-    def start_run(self) -> None:
+    def start_run(self, *, model: str = "") -> None:
+        self._run_model = model
+        self._run_started = time.monotonic()
+        self._run_tools = Counter()
+        self._run_skills = []
+        self._cache_hit_tokens = 0
         self._buffer.clear()
         self._thinking_buffer.clear()
         self._thinking_scope = None
@@ -128,6 +141,7 @@ class RichRenderer:
         elif event_type == "tool_call":
             self._flush_thinking()
             self._flush_markdown(title="Assistant Output")
+            self._count_tool_call(event)
             self._print_tool_call(event)
         elif event_type == "tool_result":
             self._flush_thinking()
@@ -141,6 +155,7 @@ class RichRenderer:
             self._flush_thinking()
             self._flush_markdown(title="Final Output")
             self._record_run_summary(event)
+            self._print_run_summary(event)
 
     def markdown(self, text: str) -> None:
         self.console.print(Markdown(text))
@@ -245,6 +260,7 @@ class RichRenderer:
         output_tokens = int(usage.get("output_tokens") or 0)
         self._input_tokens += input_tokens
         self._output_tokens += output_tokens
+        self._cache_hit_tokens += int(usage.get("cache_hit_tokens") or 0)
         if input_tokens:
             self._last_input_tokens = input_tokens
 
@@ -296,6 +312,55 @@ class RichRenderer:
         self._last_context_ratio = context_ratio
         self._last_has_usage = has_usage
 
+    def _count_tool_call(self, event: dict[str, Any]) -> None:
+        name = str(event.get("name") or "unknown")
+        self._run_tools[name] += 1
+        payload = event.get("input")
+        if name == "load_skill" and isinstance(payload, dict) and payload.get("name"):
+            skill = str(payload["name"])
+            if skill not in self._run_skills:
+                self._run_skills.append(skill)
+
+    def _print_run_summary(self, event: dict[str, Any]) -> None:
+        """One short line under the answer: model, calls, tools, skills, tokens, cost, time."""
+
+        usage = event.get("usage") or {}
+        input_tokens = int(usage.get("input_tokens") or self._input_tokens)
+        output_tokens = int(usage.get("output_tokens") or self._output_tokens)
+        cached = int(usage.get("cache_hit_tokens") or self._cache_hit_tokens)
+        calls = int(event.get("total_turns") or 0)
+
+        parts: list[str] = []
+        if self._run_model:
+            parts.append(self._run_model)
+        if calls:
+            parts.append(f"{calls} model call{'s' if calls != 1 else ''}")
+        tool_calls = sum(self._run_tools.values())
+        if tool_calls:
+            kinds = ", ".join(
+                f"{_short_tool_name(name)}×{count}" if count > 1 else _short_tool_name(name)
+                for name, count in self._run_tools.most_common(4)
+            )
+            more = ", …" if len(self._run_tools) > 4 else ""
+            parts.append(f"{tool_calls} tool call{'s' if tool_calls != 1 else ''} ({kinds}{more})")
+        if self._run_skills:
+            label = "skill" if len(self._run_skills) == 1 else "skills"
+            parts.append(f"{label} {', '.join(self._run_skills)}")
+        if input_tokens or output_tokens:
+            tokens = f"{_compact_count(input_tokens)} in"
+            if cached:
+                tokens += f" ({_compact_count(cached)} cached)"
+            parts.append(f"{tokens} / {_compact_count(output_tokens)} out")
+        # A tiered /plan or /team run mixes models; pricing it all at one model's rate is wrong.
+        cost = (event.get("cost") or {}).get("usd") or {}
+        if cost.get("total_cost") is not None and self._run_model != "tiered models":
+            total = float(cost["total_cost"])
+            parts.append(f"${total:.4f}" if total < 0.01 else f"${total:.3f}")
+        if self._run_started:
+            parts.append(f"{time.monotonic() - self._run_started:.0f}s")
+        if parts:
+            self.console.print(Text("✓ " + " · ".join(parts), style="#6b7280"))
+
     def _identity_panel(self, *, version: str, api_key_configured: bool) -> Table:
         logo = Text()
         for row, color in zip(_RJ_LOGO, _LOGO_GRADIENT, strict=True):
@@ -335,13 +400,28 @@ _RJ_LOGO = (
 )
 _LOGO_GRADIENT = ("#bef264", "#86efac", "#5eead4", "#38bdf8", "#818cf8")
 
+# Only what stays true as features come and go; /help lists everything from the command
+# table, so it cannot fall behind.
 _QUICK_START = (
-    ("直接提需求", "读代码、改文件、跑命令；写文件和执行命令前会先问你"),
-    ("/plan  /team", "大任务先规划再执行，/team 多个 Agent 分工并交叉审核"),
-    ("网页 · 文档", "打不开的网页会换浏览器读；PDF、Word、Excel、PPT 交给技能"),
-    ("/model", "换模型    /compact 压缩上下文    /skill 看技能    /help 全部命令"),
-    ("Shift+Tab", "切换审批模式    Ctrl+D 退出"),
+    ("开始", "直接输入需求；用 @路径 引用本地文件"),
+    ("帮助", "/help 查看全部命令    Shift+Tab 切换审批模式    Ctrl+D 退出"),
 )
+
+
+def _short_tool_name(name: str) -> str:
+    # mcp__chrome-visible__navigate_page -> chrome-visible/navigate_page
+    if name.startswith("mcp__"):
+        server, _, tool = name[len("mcp__") :].partition("__")
+        return f"{server}/{tool}" if tool else server
+    return name
+
+
+def _compact_count(value: int) -> str:
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}M"
+    if value >= 1_000:
+        return f"{value / 1_000:.1f}k"
+    return str(value)
 
 
 def _format_payload(payload: Any) -> str:

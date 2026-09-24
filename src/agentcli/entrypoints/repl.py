@@ -357,12 +357,22 @@ async def start_repl(cwd: str, config: AgentCliConfig) -> None:
 
 
 async def _run_agent(agent: Agent, renderer: RichRenderer, message: str) -> None:
-    await _run_events(agent.run(message), renderer, agent.llm_client.max_context_window)
+    await _run_events(
+        agent.run(message),
+        renderer,
+        agent.llm_client.max_context_window,
+        model=agent.llm_client.model_name,
+    )
 
 
-async def _run_events(events, renderer: RichRenderer, context_window: int | None = None) -> None:
+async def _run_events(
+    events,
+    renderer: RichRenderer,
+    context_window: int | None = None,
+    model: str = "",
+) -> None:
     renderer.set_context_window(context_window)
-    renderer.start_run()
+    renderer.start_run(model=model)
     renderer.newline()
     async for event in events:
         renderer.handle(event)
@@ -469,6 +479,7 @@ async def _handle_slash(
                 plan_agent.run(arg),
                 RichRenderer(),
                 agent.llm_client.max_context_window,
+                model=_run_model_label(agent.llm_client, config),
             )
     elif command == "/team":
         if not arg:
@@ -492,6 +503,7 @@ async def _handle_slash(
                 orchestrator.run(team_task),
                 RichRenderer(),
                 agent.llm_client.max_context_window,
+                model=_run_model_label(agent.llm_client, config),
             )
     elif command == "/model":
         await _model_command(arg, console, cwd, config, agent, registry, renderer)
@@ -838,10 +850,28 @@ def _count_mcp_servers(manager: Any) -> int:
     return sum(1 for spec in manager.specs.values() if spec.enabled)
 
 
-def _on_demand_tool_count(registry: Any) -> int:
-    """Deferred tools not loaded yet: only their names are in the request, via load_tools."""
+def _run_model_label(session_client: Any, config: AgentCliConfig) -> str:
+    """The model named in a /plan or /team summary: one model, or several tiers."""
 
-    return sum(1 for tool in registry.deferred_tools() if not registry.is_active(tool.name))
+    if ModelTiers(config, session_client).configured:
+        return "tiered models"
+    return session_client.model_name
+
+
+def _on_demand_tool_count(registry: Any) -> int:
+    """Kinds of deferred tool not loaded yet: only their names are in the request.
+
+    Two servers offering the same tool (the two browsers both have navigate_page) count
+    once, since they differ only in which browser they drive.
+    """
+
+    return len(
+        {
+            tool.name.split("__")[-1]
+            for tool in registry.deferred_tools()
+            if not registry.is_active(tool.name)
+        }
+    )
 
 
 def _parse_mode_argument(
