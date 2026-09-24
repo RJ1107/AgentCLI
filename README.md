@@ -210,7 +210,14 @@ uv run agentcli skill add path/to/skill --scope project       # this project onl
 uv run agentcli skill list
 ```
 
-`examples/skills/` has three to try: `finance-qa` (company and stock questions, with a calculator script so figures are computed, not guessed) and two parody voices, `trump-style` and `sun-yuchen-style`, for code reviews and release notes.
+`examples/skills/` has skills to try:
+
+- `pdf-tools`: text, tables, search, merge, and split for PDF files (`pip install pypdf pdfplumber`)
+- `office-docs`: read and create Word, Excel, and PowerPoint files (`pip install python-docx openpyxl python-pptx`)
+- `finance-qa`: company and stock questions, with a calculator script so figures are computed, not guessed
+- `trump-style`, `sun-yuchen-style`: parody voices for code reviews and release notes
+
+The document skills are original code on open-source libraries; their scripts run on the Python found on your `PATH`.
 
 ## MCP
 
