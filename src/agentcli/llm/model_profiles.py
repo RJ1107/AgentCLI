@@ -10,6 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from agentcli.llm.pricing import OPENROUTER_CATALOG
+from agentcli.paths import agentcli_home
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,7 +89,7 @@ _OPENROUTER_ABOUT: dict[str, tuple[str, str]] = {
     "openai/gpt-6-sol": ("GPT-6 Sol", "OpenAI high-end at a fifth of Astra's price"),
     "openai/gpt-6-luna": ("GPT-6 Luna", "OpenAI fast tier, very cheap"),
     "anthropic/claude-opus-5.5": ("Claude Opus 5.5", "Anthropic flagship for large codebases"),
-    "deepseek/deepseek-v4-flash": ("DeepSeek V4 Flash", "default: cheapest capable agent model"),
+    "deepseek/deepseek-v4-flash": ("DeepSeek V4 Flash", "cheapest capable agent model"),
     "deepseek/deepseek-v4.1-flash": ("DeepSeek V4.1 Flash", "newer Flash, fast, near-free cache"),
     "deepseek/deepseek-v4-pro-0813": ("DeepSeek V4 Pro 0813", "stronger DeepSeek, August build"),
     "z-ai/glm-5.3": ("GLM-5.3", "Zhipu flagship for long agent tasks"),
@@ -167,7 +168,7 @@ class CustomModelStore:
     """Persist BYOK model profiles in a user-only JSON file."""
 
     def __init__(self, path: str | Path | None = None) -> None:
-        self.path = Path(path or Path.home() / ".agentcli" / "models.json").expanduser()
+        self.path = Path(path or agentcli_home() / "models.json").expanduser()
 
     def list(self) -> list[ModelProfile]:
         data = self._read()

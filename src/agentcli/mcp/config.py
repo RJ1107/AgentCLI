@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from agentcli.paths import agentcli_home
+
 
 @dataclass(slots=True)
 class McpServerSpec:
@@ -32,7 +34,7 @@ class McpServerSpec:
 def load_mcp_server_specs(project_root: str | Path) -> dict[str, McpServerSpec]:
     root = Path(project_root).resolve()
     merged: dict[str, Any] = {}
-    for path in [Path.home() / ".agentcli" / "mcp.json", root / ".agentcli" / "mcp.json"]:
+    for path in [agentcli_home() / "mcp.json", root / ".agentcli" / "mcp.json"]:
         data = _read_json(path)
         if not data:
             continue
@@ -53,7 +55,7 @@ CHROME_DEVTOOLS_MCP_VERSION = "1.10.1"
 
 # The visible browser's profile: kept between sessions so logins survive, and separate from
 # the user's own Chrome so the agent only ever holds the logins made here on purpose.
-AGENT_BROWSER_PROFILE = "${HOME}/.agentcli/browser-profile"
+AGENT_BROWSER_PROFILE = "${AGENTCLI_HOME}/browser-profile"
 
 
 def write_chrome_devtools_config(
@@ -75,8 +77,7 @@ def write_chrome_devtools_config(
       themselves.
     """
 
-    root = Path(scope_root).resolve() if scope_root else Path.home()
-    config_dir = root / ".agentcli"
+    config_dir = Path(scope_root).resolve() / ".agentcli" if scope_root else agentcli_home()
     config_dir.mkdir(parents=True, exist_ok=True)
     path = config_dir / "mcp.json"
     data = _read_json(path) or {"mcpServers": {}}
@@ -165,6 +166,7 @@ def _expand(value: str, project_root: Path) -> str:
     replacements = {
         "PROJECT_DIR": str(project_root),
         "HOME": str(Path.home()),
+        "AGENTCLI_HOME": str(agentcli_home()),
     }
 
     def replace(match: re.Match[str]) -> str:

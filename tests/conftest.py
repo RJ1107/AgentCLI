@@ -14,3 +14,5 @@ def _isolated_home(tmp_path_factory, monkeypatch):
     home = tmp_path_factory.mktemp("home")
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))
+    # The real AGENTCLI_HOME (say D:\agentcli-data) must never see test data either.
+    monkeypatch.delenv("AGENTCLI_HOME", raising=False)

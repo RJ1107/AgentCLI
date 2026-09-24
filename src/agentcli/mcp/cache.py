@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from agentcli.mcp.config import McpServerSpec
+from agentcli.paths import agentcli_home
 
 CACHE_TTL_SECONDS = 7 * 24 * 3600
 
@@ -27,7 +28,7 @@ class ToolListCache:
     @property
     def root(self) -> Path:
         # Resolved late so a changed home directory (tests, service accounts) is respected.
-        return self._root or Path.home() / ".agentcli" / "mcp-cache"
+        return self._root or agentcli_home() / "mcp-cache"
 
     def get(self, spec: McpServerSpec) -> list[dict[str, Any]] | None:
         path = self._path(spec)

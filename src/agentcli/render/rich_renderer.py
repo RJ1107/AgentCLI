@@ -4,13 +4,14 @@ import json
 from typing import Any
 
 from rich import box
-from rich.align import Align
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
+
+from agentcli import __version__
 
 
 class RichRenderer:
@@ -67,26 +68,23 @@ class RichRenderer:
         provider: str,
         cwd: str,
         tools: int,
-        version: str = "0.1.0",
+        version: str = __version__,
         api_key_configured: bool = False,
         mcp_servers: int = 0,
         skills: int = 0,
         agents_files: int = 0,
         hitl_mode: str = "auto",
     ) -> None:
-        top = Table.grid(expand=True)
-        top.add_column(ratio=1)
-        top.add_column(ratio=2)
-        top.add_row(
-            self._identity_panel(version=version, api_key_configured=api_key_configured),
-            self._release_panel(version=version),
-        )
-
-        _ = model, provider, cwd, tools, mcp_servers, skills, agents_files, hitl_mode
-
         self.console.print()
-        self.console.print(top)
-        self.console.print(Align.right(Text("? for shortcuts", style="dim")))
+        self.console.print(
+            self._identity_panel(version=version, api_key_configured=api_key_configured)
+        )
+        self.console.print()
+        self.console.print(self._guide_panel())
+        self.console.print()
+        # Model, tools and the rest live in the status line under the prompt, which stays
+        # current; the banner only introduces the program.
+        _ = model, provider, cwd, tools, mcp_servers, skills, agents_files, hitl_mode
         self.console.rule(style="grey23")
         self.console.print()
 
@@ -299,52 +297,50 @@ class RichRenderer:
         self._last_has_usage = has_usage
 
     def _identity_panel(self, *, version: str, api_key_configured: bool) -> Table:
-        logo = Text("\n".join(_PI_LOGO), style="bold #a8ff60")
-        identity = Text()
-        identity.append("AgentCLI ", style="bold white")
-        identity.append(f"v{version}", style="dim")
-        identity.append("\n\n")
-        if api_key_configured:
-            identity.append("Signed in ", style="bold white")
-            identity.append("API Key", style="dim")
-        else:
-            identity.append("Missing ", style="bold red")
-            identity.append("API Key", style="dim")
+        logo = Text()
+        for row, color in zip(_RJ_LOGO, _LOGO_GRADIENT, strict=True):
+            logo.append(row + "\n", style=f"bold {color}")
 
-        grid = Table.grid(padding=(0, 2))
+        identity = Text()
+        identity.append("'s ", style="bold #a3e635")
+        identity.append("AgentCLI", style="bold white")
+        identity.append(f"  v{version}", style="#6b7280")
+        identity.append("\n终端里的编程 Agent", style="#9ca3af")
+        if not api_key_configured:
+            identity.append("\n未配置 API Key", style="bold red")
+            identity.append("：设置 OPENROUTER_API_KEY 或 DEEPSEEK_API_KEY", style="#9ca3af")
+
+        grid = Table.grid(padding=(0, 1))
         grid.add_column(no_wrap=True)
-        grid.add_column()
-        grid.add_row(logo, Align.center(identity, vertical="middle"))
+        grid.add_column(vertical="bottom")
+        grid.add_row(logo, identity)
         return grid
 
-    def _release_panel(self, *, version: str) -> Panel:
-        notes = Text()
-        for line in [
-            "π logo home layout for the interactive CLI",
-            "MCP, skills, tools, and workspace status at a glance",
-            "Use /help for commands and /config for runtime settings",
-        ]:
-            notes.append("- ", style="dim")
-            notes.append(line, style="dim")
-            notes.append("\n")
-        notes.append("/help", style="purple")
-        notes.append(" for more", style="dim")
-        return Panel(
-            notes,
-            title=Text(f"What's new (v{version})", style="bold green"),
-            border_style="grey37",
-            box=box.ROUNDED,
-            padding=(0, 2),
-        )
+    def _guide_panel(self) -> Table:
+        guide = Table.grid(padding=(0, 2))
+        guide.add_column(style="bold #22d3ee", no_wrap=True)
+        guide.add_column(style="#9ca3af")
+        for key, rest in _QUICK_START:
+            guide.add_row(key, rest)
+        return guide
 
 
-_PI_LOGO = (
-    "████████████",
-    "  ██    ██  ",
-    "  ██    ██  ",
-    "  ██    ██  ",
-    "  ██    ██  ",
-    "  ██    ██  ",
+# Two-cell-wide blocks, so the letters keep their proportions in a terminal.
+_RJ_LOGO = (
+    "██████       ██",
+    "██   ██      ██",
+    "██████       ██",
+    "██  ██   ██  ██",
+    "██   ██   ████ ",
+)
+_LOGO_GRADIENT = ("#bef264", "#86efac", "#5eead4", "#38bdf8", "#818cf8")
+
+_QUICK_START = (
+    ("直接提需求", "读代码、改文件、跑命令；写文件和执行命令前会先问你"),
+    ("/plan  /team", "大任务先规划再执行，/team 多个 Agent 分工并交叉审核"),
+    ("网页 · 文档", "打不开的网页会换浏览器读；PDF、Word、Excel、PPT 交给技能"),
+    ("/model", "换模型    /compact 压缩上下文    /skill 看技能    /help 全部命令"),
+    ("Shift+Tab", "切换审批模式    Ctrl+D 退出"),
 )
 
 

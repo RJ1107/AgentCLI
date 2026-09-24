@@ -75,6 +75,8 @@ Configuration is loaded in this order:
 
 Use `.env.example` or `.agentcli/config.example.json` as a starting point for local setup.
 
+`~/.agentcli` is the default data folder: the user config, `mcp.json`, long-term memory (`memory.db`), the audit log, user skills, snapshots, prompt history, and the visible browser's profile. Set `AGENTCLI_HOME` to keep all of it somewhere else, for example on another drive (`setx AGENTCLI_HOME D:gentcli-data` on Windows). Every `~/.agentcli` path below then means that folder.
+
 Example `.env`:
 
 ```dotenv

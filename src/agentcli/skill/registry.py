@@ -9,6 +9,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from agentcli.paths import agentcli_home
+
 
 @dataclass(slots=True)
 class Skill:
@@ -96,7 +98,7 @@ class SkillContextBuffer:
 
 class SkillStateStore:
     def __init__(self, path: str | Path | None = None):
-        self.path = Path(path or Path.home() / ".agentcli" / "skills.json").expanduser()
+        self.path = Path(path or agentcli_home() / "skills.json").expanduser()
 
     def disabled(self) -> set[str]:
         if not self.path.exists():
@@ -142,7 +144,7 @@ class SkillRegistry:
         self.project_root = Path(project_root).resolve()
         package_root = Path(__file__).resolve().parents[1]
         self.builtin_root = Path(builtin_root or package_root / "builtin_skills")
-        self.user_root = Path(user_root or Path.home() / ".agentcli" / "skills")
+        self.user_root = Path(user_root or agentcli_home() / "skills")
         self.project_skill_root = self.project_root / ".agentcli" / "skills"
         self.state_store = state_store or SkillStateStore()
         self._skills: dict[str, Skill] | None = None

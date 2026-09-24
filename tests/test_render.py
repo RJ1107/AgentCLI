@@ -19,7 +19,7 @@ from agentcli.entrypoints.repl import (
 from agentcli.render import RichRenderer
 
 
-def test_banner_renders_pi_home_layout():
+def test_banner_renders_rj_home_layout():
     stream = StringIO()
     console = Console(file=stream, color_system=None, width=200)
     renderer = RichRenderer(console=console)
@@ -29,7 +29,7 @@ def test_banner_renders_pi_home_layout():
         provider="deepseek",
         cwd="/tmp/project",
         tools=12,
-        version="0.1.0",
+        version="1.2.1",
         api_key_configured=True,
         mcp_servers=1,
         skills=3,
@@ -38,11 +38,29 @@ def test_banner_renders_pi_home_layout():
     )
 
     output = stream.getvalue()
-    assert "████████████" in output
-    assert "  ██    ██" in output
-    assert "AgentCLI v0.1.0" in output
-    assert "Signed in API Key" in output
-    assert "What's new (v0.1.0)" in output
+    assert "██████       ██" in output
+    assert "'s AgentCLI  v1.2.1" in output
+    assert "/plan  /team" in output
+    assert "Signed in" not in output
+    assert "未配置 API Key" not in output
+
+
+def test_banner_warns_when_no_api_key():
+    stream = StringIO()
+    renderer = RichRenderer(console=Console(file=stream, color_system=None, width=200))
+    renderer.banner(
+        model="m",
+        provider="p",
+        cwd=".",
+        tools=1,
+        version="1.2.1",
+        api_key_configured=False,
+        mcp_servers=0,
+        skills=0,
+        agents_files=0,
+        hitl_mode="auto",
+    )
+    assert "未配置 API Key" in stream.getvalue()
 
 
 def test_prompt_message_keeps_status_and_input_together():
@@ -53,13 +71,14 @@ def test_prompt_message_keeps_status_and_input_together():
         agents_files=2,
         mcp_servers=1,
         skills=3,
+        deferred_tools=68,
         stats={"total_tokens": 13187, "context_ratio": 0.013, "has_usage": True},
     )
     plain = "".join(text for _style, text in prompt)
 
-    assert "2 AGENTS.md files" in plain
+    assert "2 instruction files" in plain
     assert "1 MCP server" in plain
-    assert "3 skills · Tools 12" in plain
+    assert "3 skills · Tools 12 +68 on demand" in plain
     assert "Default  Shift+Tab" in plain
     assert "deepseek-v4-flash" in plain
     assert "█░░░░░░░░░░░ 1%" in plain
@@ -295,3 +314,21 @@ def test_missing_usage_keeps_toolbar_tokens_unavailable():
     assert ("class:toolbar.model", "deepseek-v4-flash") in toolbar
     assert ("class:toolbar.ctx.bar", "░░░░░░░░░░░░") in toolbar
     assert ("class:toolbar.ctx.value", "0%") in toolbar
+
+
+def test_instruction_file_count_matches_what_the_prompt_loads(tmp_path):
+    from agentcli.prompt.assembler import PromptAssembler
+
+    (tmp_path / "AGENTCLI.md").write_text("Run pytest before committing.", encoding="utf-8")
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "AGENTS.md").write_text("not loaded", encoding="utf-8")
+    assembler = PromptAssembler(
+        config=load_config(project_root=tmp_path),
+        cwd=str(tmp_path),
+        tool_names=[],
+        model="m",
+        provider="p",
+    )
+
+    assert assembler.instruction_files() == [(tmp_path / "AGENTCLI.md").resolve()]
+    assert "Run pytest before committing." in assembler.build_static()

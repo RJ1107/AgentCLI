@@ -1,6 +1,6 @@
 [project]
 name = "agentcli-python"
-version = "0.1.0"
+version = "1.2.1"
 description = "Python terminal AI agent CLI with ReAct tools, MCP, Runtime API, memory, snapshots, web search, and image input"
 readme = "README.md"
 requires-python = ">=3.11"

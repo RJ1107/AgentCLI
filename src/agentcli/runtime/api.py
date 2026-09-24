@@ -15,6 +15,7 @@ from agentcli.agent import QueryEngine
 from agentcli.bootstrap import build_tool_registry
 from agentcli.config import AgentCliConfig
 from agentcli.llm import create_llm_client
+from agentcli.paths import agentcli_home
 from agentcli.runtime.tasks import TASK_MODES, DurableTaskManager, TaskRecord
 from agentcli.types import Message
 
@@ -37,10 +38,10 @@ class RuntimeApiServer:
         self.config = config
         self.api_key = api_key
         self.port = port
-        self.db_path = Path.home() / ".agentcli" / "runtime" / "runtime.db"
+        self.db_path = agentcli_home() / "runtime" / "runtime.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.task_manager = DurableTaskManager(
-            Path.home() / ".agentcli" / "tasks" / "tasks.db", scope=self.cwd
+            agentcli_home() / "tasks" / "tasks.db", scope=self.cwd
         )
         self.workers = workers
         self._stop = threading.Event()

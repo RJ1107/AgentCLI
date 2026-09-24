@@ -102,7 +102,9 @@ class PromptAssembler:
             )
         return "\n".join(parts)
 
-    def _static_project_instructions(self) -> str:
+    def instruction_files(self) -> list[Path]:
+        """The project instruction files that exist, in the order they enter the system prompt."""
+
         paths = [
             Path(self.cwd) / "AGENTS.md",
             Path(self.cwd) / ".agentcli" / "AGENTS.md",
@@ -115,13 +117,16 @@ class PromptAssembler:
             candidate = Path(configured).expanduser()
             paths.append(candidate if candidate.is_absolute() else Path(self.cwd) / candidate)
 
-        chunks: list[str] = []
-        seen: set[Path] = set()
+        found: list[Path] = []
         for path in paths:
             resolved = path.resolve()
-            if resolved in seen or not resolved.is_file():
-                continue
-            seen.add(resolved)
+            if resolved not in found and resolved.is_file():
+                found.append(resolved)
+        return found
+
+    def _static_project_instructions(self) -> str:
+        chunks: list[str] = []
+        for resolved in self.instruction_files():
             try:
                 content = resolved.read_text(encoding="utf-8").strip()
             except OSError:

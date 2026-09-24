@@ -31,6 +31,7 @@ from agentcli.llm.model_profiles import (
     ModelProfile,
 )
 from agentcli.memory import MemoryManager
+from agentcli.paths import agentcli_home
 from agentcli.policy import AuditLog
 from agentcli.prompt import PromptAssembler
 from agentcli.rag import CodeIndex
@@ -223,17 +224,19 @@ async def start_repl(cwd: str, config: AgentCliConfig) -> None:
     permission_mode = PermissionModeController(config)
     registry, mcp_manager = await build_tool_registry(config=config, cwd=cwd)
     client = create_llm_client(config.llm)
-    system_prompt = PromptAssembler(
+    assembler = PromptAssembler(
         config=config,
         cwd=cwd,
         tool_names=registry.list_names(),
         model=client.model_name,
         provider=client.provider_name,
-    ).build_static()
+    )
+    system_prompt = assembler.build_static()
     tool_count = len(registry.list_names())
     mcp_server_count = _count_mcp_servers(mcp_manager)
     skill_count = len(SkillRegistry(cwd).list())
-    agents_file_count = _count_named_files(cwd, "AGENTS.md")
+    # The files that are really in the system prompt, not every AGENTS.md in the tree.
+    agents_file_count = len(assembler.instruction_files())
     renderer = RichRenderer(context_window=client.max_context_window)
     renderer.banner(
         model=client.model_name,
@@ -256,13 +259,14 @@ async def start_repl(cwd: str, config: AgentCliConfig) -> None:
         approval_callback=lambda request: _approval_prompt(request, console, permission_mode),
     )
 
-    history_path = Path.home() / ".agentcli" / "history" / "prompt_history.txt"
+    history_path = agentcli_home() / "history" / "prompt_history.txt"
     history_path.parent.mkdir(parents=True, exist_ok=True)
     session = PromptSession(
         message=lambda: _prompt_message(
             cwd=cwd,
             model=agent.llm_client.model_name,
-            tools=tool_count,
+            tools=len(registry.definitions()),
+            deferred_tools=_on_demand_tool_count(registry),
             agents_files=agents_file_count,
             mcp_servers=mcp_server_count,
             skills=skill_count,
@@ -763,7 +767,7 @@ def _skill_command(arg: str, console: Console, cwd: str) -> None:
 
 
 def _task_command(arg: str, console: Console, cwd: str) -> None:
-    manager = DurableTaskManager(Path.home() / ".agentcli" / "tasks" / "tasks.db", scope=cwd)
+    manager = DurableTaskManager(agentcli_home() / "tasks" / "tasks.db", scope=cwd)
     sub, _, rest = arg.partition(" ")
     if sub == "add" and rest:
         try:
@@ -834,24 +838,10 @@ def _count_mcp_servers(manager: Any) -> int:
     return sum(1 for spec in manager.specs.values() if spec.enabled)
 
 
-def _count_named_files(root: str, filename: str) -> int:
-    excluded_dirs = {
-        ".git",
-        ".mypy_cache",
-        ".pytest_cache",
-        ".ruff_cache",
-        ".venv",
-        "__pycache__",
-        "build",
-        "dist",
-        "node_modules",
-    }
-    count = 0
-    for _dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [name for name in dirnames if name not in excluded_dirs]
-        if filename in filenames:
-            count += 1
-    return count
+def _on_demand_tool_count(registry: Any) -> int:
+    """Deferred tools not loaded yet: only their names are in the request, via load_tools."""
+
+    return sum(1 for tool in registry.deferred_tools() if not registry.is_active(tool.name))
 
 
 def _parse_mode_argument(
@@ -902,15 +892,19 @@ def _prompt_message(
     skills: int,
     stats: dict[str, Any] | None = None,
     permission_mode: PermissionMode = "default",
+    deferred_tools: int = 0,
 ) -> list[tuple[str, str]]:
+    # tools: definitions sent with every request; deferred_tools: loaded only when needed.
+    on_demand = [("class:prompt.dim", f" +{deferred_tools} on demand")] if deferred_tools else []
     return [
         ("class:prompt.count.agents", str(agents_files)),
-        ("class:prompt.dim", f" {_plural_label(agents_files, 'AGENTS.md file')} · "),
+        ("class:prompt.dim", f" {_plural_label(agents_files, 'instruction file')} · "),
         ("class:prompt.count.mcp", str(mcp_servers)),
         ("class:prompt.dim", f" {_plural_label(mcp_servers, 'MCP server')} · "),
         ("class:prompt.count.skills", str(skills)),
         ("class:prompt.dim", f" {_plural_label(skills, 'skill')} · Tools "),
         ("class:prompt.tools", str(tools)),
+        *on_demand,
         ("class:prompt.dim", "\n"),
         *_bottom_toolbar(cwd, model, stats, permission_mode=permission_mode),
         ("class:prompt.dim", "\n\n"),

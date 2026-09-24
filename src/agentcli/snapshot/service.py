@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from agentcli.paths import agentcli_home
+
 SKIP_DIRS = {".git", ".venv", "node_modules", "dist", "build", "target", "__pycache__"}
 
 
@@ -22,7 +24,7 @@ class SnapshotService:
     def __init__(self, project_root: str | Path):
         self.project_root = Path(project_root).resolve()
         digest = hashlib.sha256(str(self.project_root).encode("utf-8")).hexdigest()[:16]
-        self.root = Path.home() / ".agentcli" / "snapshots" / digest
+        self.root = agentcli_home() / "snapshots" / digest
         self.root.mkdir(parents=True, exist_ok=True)
         self.index_path = self.root / "index.jsonl"
 

@@ -8,9 +8,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-
-def _home() -> Path:
-    return Path.home()
+from agentcli.paths import agentcli_home
 
 
 @dataclass(slots=True)
@@ -47,7 +45,7 @@ class McpConfig:
 class MemoryConfig:
     max_conversation_history: int = 100
     long_term_enabled: bool = True
-    long_term_db_path: str = "~/.agentcli/memory.db"
+    long_term_db_path: str = ""  # empty: <AGENTCLI_HOME>/memory.db
     max_long_term_entries: int = 1_000
     max_memory_chars: int = 8_000
     recall_limit: int = 6
@@ -96,7 +94,7 @@ class PolicyConfig:
             "reboot",
         ]
     )
-    audit_log_path: str = "~/.agentcli/audit.jsonl"
+    audit_log_path: str = ""  # empty: <AGENTCLI_HOME>/audit.jsonl
 
 
 @dataclass(slots=True)
@@ -163,7 +161,7 @@ def load_config(
     env_map = env if env is not None else os.environ
     data = _config_to_dict(AgentCliConfig())
 
-    user_config = _read_json(_home() / ".agentcli" / "config.json")
+    user_config = _read_json(agentcli_home() / "config.json")
     if user_config:
         data = _deep_merge(data, user_config)
 
@@ -181,13 +179,17 @@ def load_config(
 
     data = _apply_env(data, env_map)
     config = _dict_to_config(data)
-    config.memory.long_term_db_path = _expand_home(config.memory.long_term_db_path)
-    config.policy.audit_log_path = _expand_home(config.policy.audit_log_path)
+    config.memory.long_term_db_path = _expand_home(
+        config.memory.long_term_db_path or str(agentcli_home() / "memory.db")
+    )
+    config.policy.audit_log_path = _expand_home(
+        config.policy.audit_log_path or str(agentcli_home() / "audit.jsonl")
+    )
     return config
 
 
 def get_config_paths(project_root: str | Path | None = None) -> list[Path]:
-    paths = [_home() / ".agentcli" / "config.json"]
+    paths = [agentcli_home() / "config.json"]
     if project_root:
         paths.append(Path(project_root).resolve() / ".agentcli" / "config.json")
     return paths

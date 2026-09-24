@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from prompt_toolkit.application import Application
+from prompt_toolkit.application import Application, get_app
 from prompt_toolkit.formatted_text import StyleAndTextTuples
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import Layout, Window
@@ -70,7 +70,9 @@ class ModelSelectorState:
             return None
         return ModelSelectorAction("delete", self.custom[self.index])
 
-    def render(self) -> StyleAndTextTuples:
+    def render(self, visible: int | None = None) -> StyleAndTextTuples:
+        """The picker as text. visible caps how many models are listed (the rest scroll)."""
+
         fragments: StyleAndTextTuples = [("class:command", "> /model\n\n")]
         fragments.extend([("class:title", "Model  ·  ")])
         fragments.extend(self._tab("default", f"Default ({len(self.defaults)})"))
@@ -90,7 +92,12 @@ class ModelSelectorState:
         profiles = self.defaults if self.tab == "default" else self.custom
         if not profiles and self.tab == "custom":
             fragments.append(("class:muted", "  No custom models yet.\n\n"))
-        for index, profile in enumerate(profiles):
+        # Keep the selected model on screen: a list taller than the terminal used to be cut
+        # off at the bottom, hiding the details of whatever was selected there.
+        first, last = _window(len(profiles), self.index, visible)
+        if first > 0:
+            fragments.append(("class:muted", f"  ↑ {first} more above\n"))
+        for index, profile in list(enumerate(profiles))[first:last]:
             selected = index == self.index
             current = (
                 profile.provider == self.current_provider.lower()
@@ -109,6 +116,8 @@ class ModelSelectorState:
             )
             if profile.description:
                 fragments.append(("class:muted", f"    {profile.description}\n"))
+        if last < len(profiles):
+            fragments.append(("class:muted", f"  ↓ {len(profiles) - last} more below\n"))
         if self.tab == "custom":
             selected = self.index == len(self.custom)
             marker = "> " if selected else "  "
@@ -134,9 +143,30 @@ class ModelSelectorState:
         return [("class:tab.active" if self.tab == tab else "class:tab", f" {label} ")]
 
 
+def _window(total: int, selected: int, visible: int | None) -> tuple[int, int]:
+    """[first, last) slice of `total` rows of which `visible` fit, keeping `selected` inside."""
+
+    if visible is None or total <= visible:
+        return 0, total
+    visible = max(1, visible)
+    first = min(max(0, selected - visible // 2), total - visible)
+    return first, first + visible
+
+
+def _models_that_fit() -> int:
+    # Each model takes three lines; the header, scroll hints and footer take about twelve.
+    try:
+        rows = get_app().output.get_size().rows
+    except Exception:  # noqa: BLE001 - no terminal size (tests, pipes): show them all
+        return 1_000
+    return max(3, (rows - 12) // 3)
+
+
 async def run_model_selector(state: ModelSelectorState) -> ModelSelectorAction | None:
     bindings = KeyBindings()
-    control = FormattedTextControl(text=state.render, focusable=True, show_cursor=False)
+    control = FormattedTextControl(
+        text=lambda: state.render(visible=_models_that_fit()), focusable=True, show_cursor=False
+    )
 
     def refresh(event) -> None:
         event.app.invalidate()
