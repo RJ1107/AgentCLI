@@ -207,8 +207,13 @@ class OpenAICompatibleClient:
             delta = choice.get("delta") or {}
 
             # DeepSeek streams its thinking as reasoning_content; OpenRouter normalizes every
-            # provider's (OpenAI, Anthropic, Google, ...) to reasoning.
-            reasoning = delta.get("reasoning_content") or delta.get("reasoning")
+            # provider's (OpenAI, Anthropic, Google, ...) to reasoning. When a model only thinks
+            # briefly, OpenAI sends just a readable summary inside reasoning_details instead.
+            reasoning = (
+                delta.get("reasoning_content")
+                or delta.get("reasoning")
+                or _readable_reasoning(delta.get("reasoning_details"))
+            )
             if isinstance(reasoning, str) and reasoning:
                 yield {"type": "thinking_delta", "thinking": reasoning}
 
@@ -230,6 +235,22 @@ class OpenAICompatibleClient:
         usage = chunk.get("usage")
         if isinstance(usage, dict):
             yield {"type": "usage", "usage": Usage.from_mapping(usage).to_dict()}
+
+
+def _readable_reasoning(details: Any) -> str:
+    """Text of the human-readable parts of OpenRouter reasoning_details (not encrypted ones)."""
+
+    if not isinstance(details, list):
+        return ""
+    parts: list[str] = []
+    for item in details:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "reasoning.summary":
+            parts.append(str(item.get("summary") or ""))
+        elif item.get("type") == "reasoning.text":
+            parts.append(str(item.get("text") or ""))
+    return "".join(parts)
 
 
 async def _iter_sse(response: httpx.Response) -> AsyncIterator[str]:

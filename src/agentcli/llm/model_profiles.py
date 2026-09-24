@@ -120,7 +120,7 @@ _OPENROUTER_PROFILES = tuple(
 )
 
 DEFAULT_MODEL_PROFILES: tuple[ModelProfile, ...] = (
-    # Direct provider APIs: need that provider's own key.
+    # DeepSeek's own API: needs DEEPSEEK_API_KEY (its cache hits cost 1/50 of a miss).
     ModelProfile(
         id="deepseek-v4-flash",
         name="DeepSeek V4 Flash",
@@ -140,16 +140,6 @@ DEFAULT_MODEL_PROFILES: tuple[ModelProfile, ...] = (
         context_window=1_000_000,
         description="Higher-quality DeepSeek model for difficult coding tasks",
         api_key_env="DEEPSEEK_API_KEY",
-    ),
-    ModelProfile(
-        id="glm-5.2",
-        name="GLM-5.2",
-        provider="glm",
-        model="glm-5.2",
-        base_url="https://open.bigmodel.cn/api/paas/v4",
-        context_window=200_000,
-        description="Zhipu flagship model for long-running Agent tasks",
-        api_key_env="ZAI_API_KEY",
     ),
     # One OpenRouter key reaches all of these.
     *_OPENROUTER_PROFILES,

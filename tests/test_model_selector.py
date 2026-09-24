@@ -112,24 +112,32 @@ def test_custom_profile_validates_endpoint_and_context_window():
 
 def test_activate_model_rebuilds_live_client_without_restart(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
-    monkeypatch.setenv("ZAI_API_KEY", "glm-secret")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "router-secret")
     config = load_config(project_root=tmp_path)
     old_client = create_llm_client(config.llm)
     agent = SimpleNamespace(llm_client=old_client, system_prompt="old")
     registry = SimpleNamespace(list_names=lambda: ["read_file"])
     renderer = SimpleNamespace(context_window=None)
     renderer.set_context_window = lambda value: setattr(renderer, "context_window", value)
-    profile = next(item for item in DEFAULT_MODEL_PROFILES if item.model == "glm-5.2")
+    profile = next(item for item in DEFAULT_MODEL_PROFILES if item.model == "openai/gpt-6-sol")
 
     _activate_model(profile, config, agent, registry, renderer, str(tmp_path))
 
     assert agent.llm_client is not old_client
-    assert agent.llm_client.provider_name == "glm"
-    assert agent.llm_client.model_name == "glm-5.2"
-    assert agent.llm_client.api_key == "glm-secret"
-    assert config.llm.base_url == "https://open.bigmodel.cn/api/paas/v4"
-    assert renderer.context_window == 200_000
+    assert agent.llm_client.provider_name == "openrouter"
+    assert agent.llm_client.model_name == "openai/gpt-6-sol"
+    assert agent.llm_client.api_key == "router-secret"
+    assert config.llm.base_url == "https://openrouter.ai/api/v1"
+    assert renderer.context_window == 1_050_000
+    assert agent.llm_client.price_profile is not None
     assert "You are AgentCLI" in agent.system_prompt
+
+
+def test_model_list_keeps_direct_deepseek_and_no_direct_glm():
+    direct = [item for item in DEFAULT_MODEL_PROFILES if item.provider != "openrouter"]
+
+    assert {item.provider for item in direct} == {"deepseek"}
+    assert any(item.model == "z-ai/glm-5.3" for item in DEFAULT_MODEL_PROFILES)
 
 
 def test_glm_startup_uses_official_zai_api_key_and_context(tmp_path, monkeypatch):

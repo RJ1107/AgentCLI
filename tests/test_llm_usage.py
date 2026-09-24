@@ -77,6 +77,24 @@ def test_agent_propagates_connection_error_without_raising(tmp_path, monkeypatch
     assert "Could not connect to deepseek" in str(events[0]["error"])
 
 
+def _thinking(delta: dict) -> str:
+    events = asyncio.run(_collect_events(_client(), {"choices": [{"delta": delta}]}))
+    return "".join(event["thinking"] for event in events if event["type"] == "thinking_delta")
+
+
+def test_reasoning_is_read_from_every_provider_shape() -> None:
+    # DeepSeek direct, and OpenRouter's normalized field.
+    assert _thinking({"reasoning_content": "deepseek thinks"}) == "deepseek thinks"
+    assert _thinking({"reasoning": "router thinks"}) == "router thinks"
+    # OpenAI's brief thinking arrives only as a readable summary in reasoning_details.
+    summary = {"type": "reasoning.summary", "summary": "Checking the math", "index": 0}
+    assert _thinking({"reasoning_details": [summary]}) == "Checking the math"
+    # Encrypted parts are not shown, and text given in both fields is not shown twice.
+    encrypted = {"type": "reasoning.encrypted", "data": "gAAAA..."}
+    assert _thinking({"reasoning_details": [encrypted]}) == ""
+    assert _thinking({"reasoning": "once", "reasoning_details": [summary]}) == "once"
+
+
 def test_usage_only_chunk_without_choices_is_parsed() -> None:
     chunk = {
         "choices": [],
