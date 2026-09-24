@@ -14,13 +14,15 @@ progress incrementally.
 
 from __future__ import annotations
 
+import time
 from collections.abc import AsyncIterator, Callable
 from typing import Any, Literal
 
 from agentcli.agent.orchestrator import AgentOrchestrator
 from agentcli.agent.plan_execute import PlanExecuteAgent
-from agentcli.agent.query import query
+from agentcli.agent.query import build_context_manager, query
 from agentcli.config import AgentCliConfig
+from agentcli.context import CompressionResult, build_summarizer, estimate_request_tokens
 from agentcli.llm.base import LlmClient
 from agentcli.prompt import PromptAssembler
 from agentcli.skill import SkillContextBuffer
@@ -91,6 +93,9 @@ class Agent:
         self.skill_context_buffer = SkillContextBuffer()
         # Path -> mtime_ns at last read/write. Edits to files changed since then are refused.
         self.file_state: dict[str, int] = {}
+        # When the conversation last went to the model (a request or a compaction). Frontends
+        # use it to warn that a long pause has probably let the provider's prompt cache expire.
+        self.last_active_at: float | None = None
 
         # Accumulated usage / cost across all turns of the session.
         self.last_usage = Usage()
@@ -136,8 +141,11 @@ class Agent:
             runner = self._run_team(message, turn_snapshot)
         else:
             runner = self._run_react(message, turn_snapshot)
-        async for event in runner:
-            yield event
+        try:
+            async for event in runner:
+                yield event
+        finally:
+            self.last_active_at = time.time()
 
     async def run_complete(self, message: str) -> QueryResult:
         """Run the agent synchronously (collect all events) and return a result."""
@@ -168,8 +176,42 @@ class Agent:
         self.history = []
         self.skill_context_buffer.clear()
         self.file_state.clear()
+        self.last_active_at = None
         self.last_usage = Usage()
         self.last_cost = {}
+
+    def context_tokens(self) -> int:
+        """Estimated size of the next request's input before any new message is added."""
+
+        return estimate_request_tokens(
+            self.history, self.system_prompt, self.tool_registry.definitions()
+        )
+
+    async def compact(self, focus: str = "") -> CompressionResult | None:
+        """Summarize the conversation now (/compact), whatever its size.
+
+        Recent turns stay verbatim and older ones become one summary, written by the
+        configured summarizer model when there is one. focus names what to keep in detail.
+        Returns None when there is nothing to compact.
+        """
+
+        if not self.history:
+            return None
+        summarizer = build_summarizer(self.llm_client, self.config)
+        result = await build_context_manager(self.llm_client, self.config).prepare_async(
+            self.history,
+            system_prompt=self.system_prompt,
+            tool_definitions=self.tool_registry.definitions(),
+            summarizer=summarizer,
+            force=True,
+            focus=focus,
+        )
+        self.history = result.messages
+        # The next request re-reads this new, shorter history anyway; no reminder for it.
+        self.last_active_at = time.time()
+        if summarizer:
+            self.last_usage = summarizer.take_usage()
+        return result
 
     # ------------------------------------------------------------------
     # Mode runners

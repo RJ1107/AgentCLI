@@ -62,20 +62,7 @@ async def query(
         file_state=file_state if file_state is not None else {},
         turn_snapshot=turn_snapshot,
     )
-    context_manager = ContextWindowManager(
-        ContextBudget(
-            context_window=llm_client.max_context_window,
-            max_output_tokens=config.llm.max_tokens,
-            compression_threshold=config.memory.compression_threshold,
-            compression_target=config.memory.compression_target,
-            reserve_tokens=config.memory.compression_reserve_tokens,
-        ),
-        max_history_messages=config.memory.max_conversation_history,
-        min_recent_messages=config.memory.min_recent_messages,
-        summary_max_chars=config.memory.summary_max_chars,
-        keep_recent_tool_results=config.memory.keep_recent_tool_results,
-        min_llm_summary_tokens=config.memory.min_llm_summary_tokens,
-    )
+    context_manager = build_context_manager(llm_client, config)
     summarizer = build_summarizer(llm_client, config)
 
     total_usage = Usage()
@@ -206,6 +193,25 @@ async def query(
     if costs:
         done_event["cost"] = costs
     yield done_event
+
+
+def build_context_manager(llm_client: LlmClient, config: AgentCliConfig) -> ContextWindowManager:
+    """The context manager for a model and config; shared by the loop and /compact."""
+
+    return ContextWindowManager(
+        ContextBudget(
+            context_window=llm_client.max_context_window,
+            max_output_tokens=config.llm.max_tokens,
+            compression_threshold=config.memory.compression_threshold,
+            compression_target=config.memory.compression_target,
+            reserve_tokens=config.memory.compression_reserve_tokens,
+        ),
+        max_history_messages=config.memory.max_conversation_history,
+        min_recent_messages=config.memory.min_recent_messages,
+        summary_max_chars=config.memory.summary_max_chars,
+        keep_recent_tool_results=config.memory.keep_recent_tool_results,
+        min_llm_summary_tokens=config.memory.min_llm_summary_tokens,
+    )
 
 
 def _merge_tool_delta(tool_states: dict[int, dict[str, Any]], delta: dict[str, Any]) -> None:

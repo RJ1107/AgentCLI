@@ -66,6 +66,14 @@ class MemoryConfig:
     # Below this many older-turn tokens a model call costs more than it saves.
     min_llm_summary_tokens: int = 2_000
     keep_recent_tool_results: int = 6
+    # Idle reminder: after this long without a model call the provider's prompt cache has
+    # probably expired (providers do not report it; Anthropic keeps 5 min or 1 h, DeepSeek's
+    # disk cache usually hours), so the next message re-reads the whole context at full price.
+    cache_ttl_minutes: int = 60
+    # Below this a full-price re-read costs little and compacting saves little: no reminder.
+    idle_reminder_min_tokens: int = 30_000
+    # After this long (overnight, say) old turns are also stale: suggest compacting first.
+    stale_session_hours: float = 8.0
 
 
 @dataclass(slots=True)

@@ -132,18 +132,32 @@ class ContextWindowManager:
         system_prompt: str = "",
         tool_definitions: list[dict] | None = None,
         summarizer: Summarizer | None = None,
+        force: bool = False,
+        focus: str = "",
     ) -> CompressionResult:
+        """Compress when over budget; with force (manual /compact), summarize regardless.
+
+        A forced run skips the thresholds and the tool-result-only shortcut: the user asked
+        for a summary, so the older turns are always folded into one, by the model when a
+        summarizer is configured. focus tells the summarizer what to keep in most detail.
+        """
+
         tools = tool_definitions or []
-        staged = self._stage(messages, system_prompt, tools)
+        staged = self._stage(messages, system_prompt, tools, force=force)
         if isinstance(staged, CompressionResult):
             return staged
 
         body = ""
         method = "extractive"
         older_tokens = sum(estimate_message_tokens(message) for message in staged.older)
-        if summarizer and older_tokens >= self.min_llm_summary_tokens:
+        if summarizer and staged.older and (force or older_tokens >= self.min_llm_summary_tokens):
             try:
-                body = (await summarizer(staged.older, staged.previous_summary)).strip()
+                pending = (
+                    summarizer(staged.older, staged.previous_summary, focus=focus)
+                    if focus
+                    else summarizer(staged.older, staged.previous_summary)
+                )
+                body = (await pending).strip()
             except Exception:  # noqa: BLE001 - any summarizer failure falls back
                 body = ""
             if body:
@@ -161,16 +175,22 @@ class ContextWindowManager:
         messages: list[Message],
         system_prompt: str,
         tools: list[dict],
+        *,
+        force: bool = False,
     ) -> CompressionResult | _Split:
         before = self._estimate_request(messages, system_prompt, tools)
         over_message_limit = len(messages) > self.max_history_messages
-        if before <= self.budget.compression_limit and not over_message_limit:
+        if not force and before <= self.budget.compression_limit and not over_message_limit:
             return CompressionResult(list(messages), before, before, False)
 
         # Layer 1: clear old tool results, keep the conversation structure intact.
         cleared, cleared_count = self._clear_old_tool_results(messages)
         after_clear = self._estimate_request(cleared, system_prompt, tools)
-        if after_clear <= self.budget.compression_target_tokens and not over_message_limit:
+        if (
+            not force
+            and after_clear <= self.budget.compression_target_tokens
+            and not over_message_limit
+        ):
             return CompressionResult(
                 cleared,
                 before,
@@ -326,6 +346,14 @@ class ContextWindowManager:
             + estimate_text_tokens(tool_text)
             + sum(estimate_message_tokens(message) for message in messages)
         )
+
+
+def estimate_request_tokens(
+    messages: list[Message], system_prompt: str = "", tool_definitions: list[dict] | None = None
+) -> int:
+    """Estimated input size of a request: what a cache miss would make the model re-read."""
+
+    return ContextWindowManager._estimate_request(messages, system_prompt, tool_definitions or [])
 
 
 def estimate_message_tokens(message: Message) -> int:

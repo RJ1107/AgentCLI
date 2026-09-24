@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -38,31 +39,129 @@ from agentcli.runtime import DurableTaskManager
 from agentcli.skill import SkillRegistry
 from agentcli.snapshot import SnapshotService
 from agentcli.tools import ToolRegistry
+from agentcli.types import Usage
 
-SLASH_COMMANDS = [
-    "/help",
-    "/exit",
-    "/clear",
-    "/context",
-    "/memory",
-    "/save",
-    "/config",
-    "/tools",
-    "/hitl",
-    "/policy",
-    "/audit",
-    "/index",
-    "/search",
-    "/plan",
-    "/team",
-    "/model",
-    "/usage",
-    "/skill",
-    "/mcp",
-    "/task",
-    "/snapshot",
-    "/restore",
+COMMAND_HELP: list[tuple[str, str, str]] = [
+    # (command, usage, what it does)
+    ("/help", "/help", "列出所有命令"),
+    ("/exit", "/exit 或 /quit", "退出（也可以按 Ctrl+D）"),
+    ("/clear", "/clear", "清空当前对话，从头开始"),
+    ("/compact", "/compact [重点]", "立刻把对话压缩成摘要；可以写明要重点保留的内容"),
+    ("/context", "/context", "当前模型、上下文大小、空闲时长等"),
+    ("/usage", "/usage", "上一次请求的 token 用量、缓存命中和费用"),
+    ("/model", "/model [模型] 或 /model <提供商> <模型>", "查看或切换模型；不带参数打开选择器"),
+    ("/plan", "/plan <任务>", "先规划成 DAG，再按依赖并行执行"),
+    ("/team", "/team [--plan] <任务>", "多 Agent：Planner 拆解、Worker 并行、Reviewer 审核"),
+    ("/memory", "/memory [search <词>|stats|delete <id>|clear]", "查看和管理长期记忆"),
+    ("/save", "/save <事实>", "手动存一条长期记忆"),
+    ("/skill", "/skill [list|show|on|off|reload] [名字]", "查看、启用、停用 Skill"),
+    ("/tools", "/tools", "列出当前可用的工具"),
+    ("/mcp", "/mcp", "MCP 服务相关的提示"),
+    (
+        "/hitl",
+        "/hitl default|auto",
+        "审批模式：default 需要审批，auto 全部放行（也可按 Shift+Tab）",
+    ),
+    ("/policy", "/policy", "查看当前安全策略"),
+    ("/audit", "/audit [N]", "查看最近 N 条审计日志"),
+    ("/snapshot", "/snapshot [clean]", "列出（或清空）工作区快照"),
+    ("/restore", "/restore <编号或 id>", "把工作区恢复到某个快照"),
+    ("/task", "/task [add|cancel|log] ...", "后台任务：添加、取消、查看日志"),
+    ("/index", "/index [路径]", "为代码建立本地搜索索引"),
+    ("/search", "/search <词>", "在代码索引里搜索"),
+    ("/config", "/config", "查看当前配置（密钥已隐藏）"),
 ]
+SLASH_COMMANDS = [command for command, _usage, _about in COMMAND_HELP]
+
+
+@dataclass(slots=True)
+class CacheReminder:
+    level: Literal["cold", "stale"]
+    idle_seconds: float
+    tokens: int
+    extra_cost: str
+
+
+def cache_reminder(
+    *, idle_seconds: float | None, tokens: int, config: AgentCliConfig, llm_client: Any = None
+) -> CacheReminder | None:
+    """Whether the next message will likely re-read a large context at full price.
+
+    Providers do not report cache expiry, so this assumes memory.cache_ttl_minutes. Small
+    contexts are skipped: re-reading them costs little and compacting them saves little.
+    """
+
+    memory = config.memory
+    if idle_seconds is None or tokens < memory.idle_reminder_min_tokens:
+        return None
+    if idle_seconds < memory.cache_ttl_minutes * 60:
+        return None
+    level = "stale" if idle_seconds >= memory.stale_session_hours * 3600 else "cold"
+    return CacheReminder(level, idle_seconds, tokens, _extra_cost(llm_client, tokens))
+
+
+def _extra_cost(llm_client: Any, tokens: int) -> str:
+    """How much more a full-price re-read costs than a cached one, when prices are known."""
+
+    calculate = getattr(llm_client, "calculate_cost", None)
+    if not callable(calculate) or getattr(llm_client, "price_profile", None) is None:
+        return ""
+    for currency, symbol in (("cny", "¥"), ("usd", "$")):
+        try:
+            miss = calculate(
+                Usage(input_tokens=tokens, cache_miss_tokens=tokens), currency=currency
+            )
+            hit = calculate(Usage(input_tokens=tokens, cache_hit_tokens=tokens), currency=currency)
+        except (KeyError, TypeError, ValueError):
+            continue
+        return f"{symbol}{miss.total_cost - hit.total_cost:.2f}"
+    return ""
+
+
+def _duration(seconds: float) -> str:
+    hours, minutes = int(seconds // 3600), int(seconds % 3600 // 60)
+    return f"{hours} 小时 {minutes} 分钟" if hours else f"{minutes} 分钟"
+
+
+def _confirm_after_idle(console: Console, reminder: CacheReminder) -> str:
+    """Ask what to do with a likely cold cache: send, compact first, or cancel."""
+
+    if not sys.stdin.isatty():
+        return "y"
+    cost = f"，比命中缓存多花约 {reminder.extra_cost}" if reminder.extra_cost else ""
+    console.print(
+        f"[yellow]距离上次请求已经 {_duration(reminder.idle_seconds)}[/yellow]，"
+        "服务商的提示缓存很可能已经过期。"
+        f"当前上下文约 {reminder.tokens / 10_000:.1f} 万 token，这次会按全价重新读取{cost}。"
+    )
+    if reminder.level == "stale":
+        console.print("离开时间较长，早期的对话细节可能已经不再需要，建议先压缩再继续。")
+    default = "c" if reminder.level == "stale" else "y"
+    console.print("[dim]y 直接发送 · c 先压缩再发送 · n 取消[/dim]")
+    return Prompt.ask("继续？", choices=["y", "c", "n"], default=default)
+
+
+async def _compact(agent: Agent, console: Console, focus: str = "") -> None:
+    before = agent.context_tokens()
+    if not agent.history:
+        console.print("当前没有对话，不需要压缩。")
+        return
+    with console.status("正在压缩对话……"):
+        result = await agent.compact(focus)
+    if result is None:
+        console.print("当前没有对话，不需要压缩。")
+        return
+    how = {"llm": "模型摘要", "extractive": "规则抽取"}.get(result.method, result.method)
+    console.print(
+        f"已压缩：{before:,} → {agent.context_tokens():,} token，"
+        f"{result.summarized_messages} 条较早的消息合成了摘要（{how}）"
+        + (
+            f"，清理了 {result.cleared_tool_results} 条旧工具结果"
+            if result.cleared_tool_results
+            else ""
+        )
+        + "。"
+    )
 
 
 PermissionMode = Literal["default", "auto"]
@@ -182,6 +281,21 @@ async def start_repl(cwd: str, config: AgentCliConfig) -> None:
             message = user_input.strip()
             if not message:
                 continue
+            if not message.startswith("/"):
+                reminder = cache_reminder(
+                    idle_seconds=(
+                        None if agent.last_active_at is None else time.time() - agent.last_active_at
+                    ),
+                    tokens=agent.context_tokens(),
+                    config=config,
+                    llm_client=agent.llm_client,
+                )
+                if reminder:
+                    choice = _confirm_after_idle(console, reminder)
+                    if choice == "n":
+                        continue
+                    if choice == "c":
+                        await _compact(agent, console)
             if message.startswith("/"):
                 should_exit = await _handle_slash(
                     message,
@@ -234,7 +348,17 @@ async def _handle_slash(
     if command in {"/exit", "/quit"}:
         return True
     if command == "/help":
-        console.print("\n".join(SLASH_COMMANDS))
+        table = Table(title="AgentCLI 命令", show_lines=False)
+        table.add_column("用法", style="cyan", no_wrap=True)
+        table.add_column("作用")
+        for _command, usage, about in COMMAND_HELP:
+            table.add_row(usage, about)
+        console.print(table)
+        console.print(
+            "[dim]Shift+Tab 切换审批模式 · 审批时按 y 允许、n 拒绝、s 跳过、a 本会话全部放行[/dim]"
+        )
+    elif command == "/compact":
+        await _compact(agent, console, arg)
     elif command == "/clear":
         agent.clear_history()
         console.clear()
@@ -245,7 +369,15 @@ async def _handle_slash(
         table.add_column("Value")
         table.add_row("cwd", cwd)
         table.add_row("model", f"{config.llm.model} ({config.llm.provider})")
-        table.add_row("context window", str(agent.llm_client.max_context_window))
+        table.add_row("context window", f"{agent.llm_client.max_context_window:,}")
+        table.add_row("context now (est.)", f"{agent.context_tokens():,} tokens")
+        idle = (
+            "no request yet"
+            if agent.last_active_at is None
+            else _duration(time.time() - agent.last_active_at)
+        )
+        table.add_row("idle since last request", idle)
+        table.add_row("assumed cache lifetime", f"{config.memory.cache_ttl_minutes} min")
         table.add_row("render", config.render_mode)
         table.add_row("memory", f"{len(memories)} recent entries")
         table.add_row("tools", str(len(registry.list_names())))

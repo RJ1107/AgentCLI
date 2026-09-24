@@ -120,6 +120,7 @@ uv run agentcli -p "Explain this repository"
 /help
 /exit
 /clear
+/compact [focus]
 /context
 /memory
 /memory search <query>
@@ -195,6 +196,10 @@ When the estimated input reaches `memory.compression_threshold` of the budget, c
 3. Oversized tool payloads in the retained turns are truncated.
 
 Recent turns and complete tool-call/result pairs are always kept verbatim. The summary is session state and is never written to long-term memory.
+
+`/compact [focus]` summarizes the conversation on demand, whatever its size; the optional focus names what to keep in the most detail (for example `/compact the database migration decisions`).
+
+Providers keep the prompt cache only for a while and do not report when it expires. When you come back after `memory.cache_ttl_minutes` (default 60) with a context of at least `memory.idle_reminder_min_tokens` (default 30,000), the REPL says so before sending: the next request will re-read the whole context at full price, with the extra cost shown when the model has a price table. You can send anyway, compact first, or cancel. After `memory.stale_session_hours` (default 8) it suggests compacting first.
 
 File edits are guarded: `edit_file` requires a unique match (or `replace_all`), and both `edit_file` and `write_file` refuse to change an existing file that has not been read, or that changed since it was last read.
 

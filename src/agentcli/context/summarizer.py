@@ -51,7 +51,9 @@ class LlmSummarizer:
         self.max_summary_chars = max_summary_chars
         self.usage = Usage()
 
-    async def __call__(self, messages: list[Message], previous_summary: str) -> str:
+    async def __call__(
+        self, messages: list[Message], previous_summary: str, focus: str = ""
+    ) -> str:
         parts = []
         if previous_summary:
             parts.append(f"<previous-summary>\n{previous_summary}\n</previous-summary>")
@@ -60,6 +62,9 @@ class LlmSummarizer:
             "Merge the previous summary (if any) and the transcript into one updated summary. "
             f"Stay under {self.max_summary_chars} characters."
         )
+        if focus:
+            # From /compact <focus>: the user says what must survive in the most detail.
+            parts.append(f"The user asked to keep this in particular detail: {focus}")
         text = ""
         async for event in self.client.chat(
             [Message(role="user", content="\n\n".join(parts))],
