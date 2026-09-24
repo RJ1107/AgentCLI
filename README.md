@@ -198,6 +198,20 @@ Recent turns and complete tool-call/result pairs are always kept verbatim. The s
 
 File edits are guarded: `edit_file` requires a unique match (or `replace_all`), and both `edit_file` and `write_file` refuse to change an existing file that has not been read, or that changed since it was last read.
 
+## Skills
+
+A skill is a folder with a `SKILL.md` manual (YAML frontmatter with `name` and `description`, then instructions) and, optionally, scripts and reference files the manual points to. The format matches the SKILL.md skills published for other agents, so most of them install unchanged.
+
+Skills are found in three places, later ones overriding earlier ones: built-in, `~/.agentcli/skills/<name>/` (every project), and `<project>/.agentcli/skills/<name>/` (one project). Every enabled skill's name and description is listed in the `load_skill` tool, so the model knows it exists; the full manual is only read when a task needs it, and loading it also tells the model the skill's folder and files so it can run the scripts and read the references.
+
+```bash
+uv run agentcli skill add examples/skills/finance-qa          # install for all projects
+uv run agentcli skill add path/to/skill --scope project       # this project only
+uv run agentcli skill list
+```
+
+`examples/skills/` has three to try: `finance-qa` (company and stock questions, with a calculator script so figures are computed, not guessed) and two parody voices, `trump-style` and `sun-yuchen-style`, for code reviews and release notes.
+
 ## MCP
 
 Configure browsers for the agent (pages that need JavaScript, or a login):

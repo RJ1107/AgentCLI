@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+from pathlib import Path
 from typing import Any
 
 from agentcli.memory import MemoryManager
@@ -392,14 +393,15 @@ def get_builtin_tools() -> list[Tool]:
 
 
 async def _read_file(payload: dict[str, Any], context: ToolContext) -> ToolResult:
+    in_skill = _in_skill_folder(context, str(payload["path"]))
     result: FileOpResult = fops.read_file(
         context.cwd,
         str(payload["path"]),
         offset=int(payload.get("offset") or 1),
         limit=int(payload.get("limit") or 500),
-        path_guard_enabled=context.config.policy.path_guard_enabled,
+        path_guard_enabled=context.config.policy.path_guard_enabled and not in_skill,
     )
-    if not result.is_error:
+    if not result.is_error and not in_skill:
         _remember_file(context, str(payload["path"]))
     return _to_tool_result(result)
 
@@ -483,10 +485,11 @@ def _stale_file_error(context: ToolContext, path: str) -> str:
 
 
 async def _list_dir(payload: dict[str, Any], context: ToolContext) -> ToolResult:
+    in_skill = _in_skill_folder(context, str(payload["path"]))
     result: FileOpResult = fops.list_directory(
         context.cwd,
         str(payload["path"]),
-        path_guard_enabled=context.config.policy.path_guard_enabled,
+        path_guard_enabled=context.config.policy.path_guard_enabled and not in_skill,
     )
     return _to_tool_result(result)
 
@@ -664,8 +667,9 @@ async def _load_skill(payload: dict[str, Any], context: ToolContext) -> ToolResu
     if not skill:
         return ToolResult(f'Skill "{payload["name"]}" not found or disabled.', is_error=True)
     content = skill.body or skill.content
-    if len(content) > 5_000:
-        content = content[:5_000] + "\n... [truncated; use /skill show for the full skill]"
+    if len(content) > 20_000:
+        content = content[:20_000] + "\n... [truncated; use /skill show for the full skill]"
+    content += _skill_files_note(skill.path.parent)
     if context.skill_context_buffer:
         context.skill_context_buffer.push(skill.name, content)
         return ToolResult(
@@ -673,6 +677,45 @@ async def _load_skill(payload: dict[str, Any], context: ToolContext) -> ToolResu
             display_summary=f"Loaded skill {skill.name}",
         )
     return ToolResult(content, display_summary=f"Loaded skill {skill.name}")
+
+
+def _skill_files_note(skill_dir) -> str:
+    """Tell the model where the skill's other files are.
+
+    A skill is a folder: SKILL.md is the manual, and it may point to scripts to run and
+    references to read only when needed. Without the folder path those files are unusable.
+    """
+
+    files = sorted(
+        path.relative_to(skill_dir).as_posix()
+        for path in skill_dir.rglob("*")
+        if path.is_file() and path.name != "SKILL.md" and "__pycache__" not in path.parts
+    )
+    if not files:
+        return ""
+    listed = "\n".join(f"- {name}" for name in files[:50])
+    more = f"\n- ... and {len(files) - 50} more" if len(files) > 50 else ""
+    return (
+        f"\n\n---\nSkill folder: {skill_dir}\nFiles (read with read_file using the full path; "
+        f"run scripts with bash from any directory):\n{listed}{more}"
+    )
+
+
+def _in_skill_folder(context: ToolContext, value: str) -> bool:
+    """Skill folders may live outside the workspace (~/.agentcli/skills); reading them is fine."""
+
+    registry = SkillRegistry(context.cwd)
+    candidate = Path(value)
+    if not candidate.is_absolute():
+        candidate = Path(context.cwd) / candidate
+    resolved = candidate.resolve()
+    for root in (registry.builtin_root, registry.user_root, registry.project_skill_root):
+        try:
+            resolved.relative_to(Path(root).expanduser().resolve())
+            return True
+        except ValueError:
+            continue
+    return False
 
 
 async def _save_skill(payload: dict[str, Any], context: ToolContext) -> ToolResult:

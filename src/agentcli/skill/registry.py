@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import unicodedata
 from collections import OrderedDict
 from collections.abc import Iterable
@@ -249,6 +250,37 @@ class SkillRegistry:
             tags=tags if tags is not None else existing.tags,
             overwrite=True,
         )
+
+    def install(self, source_dir: str | Path, *, scope: str = "user", overwrite: bool = False):
+        """Copy a skill folder (SKILL.md plus any scripts/references) into a scope.
+
+        Works for skills written in the common SKILL.md format, including ones published for
+        other agents: the folder name on disk becomes the skill's name from its frontmatter.
+        """
+
+        source = Path(source_dir).expanduser().resolve()
+        skill_file = source / "SKILL.md"
+        if not skill_file.is_file():
+            raise FileNotFoundError(f"{source} has no SKILL.md")
+        metadata = _parse_frontmatter(skill_file.read_text(encoding="utf-8"))
+        name = _validate_skill_slug(metadata.get("name") or source.name)
+        if not (metadata.get("description") or "").strip():
+            raise ValueError("SKILL.md needs a description in its frontmatter")
+        target = self._skill_path(name, scope).parent
+        if target.exists():
+            if not overwrite:
+                raise FileExistsError(f'skill "{name}" already exists in {scope} scope')
+            shutil.rmtree(target)
+        shutil.copytree(
+            source,
+            target,
+            ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc", ".DS_Store"),
+        )
+        self.reload()
+        installed = self.load(name, include_disabled=True)
+        if not installed:  # pragma: no cover - the folder was just copied
+            raise OSError(f"failed to load installed skill: {target}")
+        return installed
 
     def index_text(self, max_chars: int = 4000, max_skills: int = 20) -> str:
         skills = self.enabled_skills()[:max_skills]

@@ -58,6 +58,8 @@ app = typer.Typer(
 )
 mcp_app = typer.Typer(help="MCP server management")
 app.add_typer(mcp_app, name="mcp")
+skill_app = typer.Typer(help="Skill management")
+app.add_typer(skill_app, name="skill")
 console = Console()
 
 
@@ -327,6 +329,42 @@ def mcp_init_chrome(
     )
     typer.echo(f"Wrote Chrome DevTools MCP config to {path}")
     typer.echo("Browsers start only when the agent first uses them.")
+
+
+@skill_app.command("add")
+def skill_add(
+    folder: Annotated[Path, typer.Argument(help="Skill folder containing SKILL.md")],
+    scope: Annotated[
+        str, typer.Option("--scope", help="user (all projects) or project (this one)")
+    ] = "user",
+    cwd: Annotated[Path | None, typer.Option("--cwd", help="Project for --scope project")] = None,
+    force: Annotated[bool, typer.Option("--force", help="Replace an existing skill")] = False,
+) -> None:
+    """Install a skill folder: SKILL.md plus any scripts or reference files it ships."""
+    from agentcli.skill import SkillRegistry
+
+    if scope not in {"user", "project"}:
+        raise typer.BadParameter("scope must be user or project")
+    registry = SkillRegistry((cwd or Path.cwd()).resolve())
+    try:
+        skill = registry.install(folder, scope=scope, overwrite=force)
+    except (FileNotFoundError, FileExistsError, ValueError) as exc:
+        typer.echo(f"Could not install: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Installed skill {skill.name} ({scope}) at {skill.path.parent}")
+
+
+@skill_app.command("list")
+def skill_list(
+    cwd: Annotated[Path | None, typer.Option("--cwd", help="Project directory")] = None,
+) -> None:
+    """List skills visible from a project: built-in, user, and project ones."""
+    from agentcli.skill import SkillRegistry
+
+    for skill in SkillRegistry((cwd or Path.cwd()).resolve()).all_skills():
+        state = "" if skill.enabled else "  [disabled]"
+        description = " ".join(skill.description.split())
+        typer.echo(f"{skill.name:<22} {skill.source:<8} {description[:70]}{state}")
 
 
 @mcp_app.command("refresh")
