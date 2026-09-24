@@ -282,21 +282,36 @@ class SkillRegistry:
             raise OSError(f"failed to load installed skill: {target}")
         return installed
 
-    def index_text(self, max_chars: int = 4000, max_skills: int = 20) -> str:
-        skills = self.enabled_skills()[:max_skills]
+    def index_text(self, max_chars: int = 8000, description_chars: int = 200) -> str:
+        """One line per enabled skill for the model: level one of progressive disclosure.
+
+        Every skill stays discoverable. Descriptions are trimmed to a line each, and once the
+        budget is spent the remaining skills are listed by name only, so the 30th skill is
+        still found (by name) instead of silently vanishing from the list.
+        """
+
+        skills = self.enabled_skills()
         if not skills:
             return ""
         lines = [
             "Available skills:",
             "Load a skill with load_skill(name) when its description matches the task.",
         ]
+        used = sum(len(line) + 1 for line in lines)
+        overflow: list[str] = []
         for skill in skills:
             description = " ".join(skill.description.split())
-            if len(description) > 500:
-                description = description[:497] + "..."
-            lines.append(f"- {skill.name}: {description}")
-        text = "\n".join(lines)
-        return text[:max_chars]
+            if len(description) > description_chars:
+                description = description[: description_chars - 3] + "..."
+            line = f"- {skill.name}: {description}"
+            if overflow or used + len(line) + 1 > max_chars:
+                overflow.append(skill.name)
+                continue
+            lines.append(line)
+            used += len(line) + 1
+        if overflow:
+            lines.append(f"More skills (load by name to see what they do): {', '.join(overflow)}")
+        return "\n".join(lines)
 
     def _scope_root(self, scope: str) -> Path:
         if scope == "project":

@@ -61,6 +61,14 @@ async def fetch_url(
         else:
             raise NetworkPolicyError(f"too many redirects (more than {MAX_REDIRECTS})")
 
+    if not _is_text(content_type):
+        kind = content_type.split(";")[0].strip() or "unknown type"
+        return (
+            f"[{url} is a binary file ({kind}, {len(body):,} bytes), not a web page; "
+            "web_fetch only returns text. To work with it, download it into the workspace with "
+            "bash (for example `python -c` with urllib) and use a tool or skill made for that "
+            "format, such as a PDF text extractor.]"
+        )
     if "html" not in content_type:
         return _truncate(raw, max_length) or "(empty page)"
     page = extract_page(raw)
@@ -78,6 +86,13 @@ async def fetch_url(
         )
     text = f"{page.title}\n\n{page.text}" if page.title else page.text
     return _truncate(text, max_length) or "(empty page)"
+
+
+def _is_text(content_type: str) -> bool:
+    kind = content_type.split(";")[0].strip().lower()
+    if not kind or kind.startswith("text/"):
+        return True
+    return any(marker in kind for marker in ("json", "xml", "javascript", "yaml", "csv"))
 
 
 async def _read_capped(response: httpx.Response) -> bytes:

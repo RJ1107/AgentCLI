@@ -272,13 +272,17 @@ def mcp_serve(
     ] = "stdio",
     port: Annotated[int, typer.Option("--port", help="HTTP port")] = 3000,
     cwd: Annotated[Path | None, typer.Option("--cwd", help="Working directory")] = None,
+    read_only: Annotated[
+        bool,
+        typer.Option("--read-only", help="Offer only tools that cannot change anything"),
+    ] = False,
 ) -> None:
     """Expose AgentCLI tools via the Model Context Protocol."""
     root = str((cwd or Path.cwd()).resolve())
     if transport == "http":
-        serve_http(port=port, cwd=root)
+        serve_http(port=port, cwd=root, read_only=read_only)
     elif transport == "stdio":
-        asyncio.run(serve_stdio(cwd=root))
+        asyncio.run(serve_stdio(cwd=root, read_only=read_only))
     else:
         raise typer.BadParameter("transport must be stdio or http")
 

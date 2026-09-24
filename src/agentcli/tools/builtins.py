@@ -15,6 +15,15 @@ from agentcli.tools.base import Tool, ToolContext, ToolResult, object_schema
 from agentcli.tools.file_ops import FileOpResult
 from agentcli.web import fetch_url, search_web
 
+# asyncio's shell is cmd.exe on Windows and /bin/sh elsewhere. Saying so up front keeps the
+# model from writing `ls`, `cat`, or `&&`-heavy POSIX commands for a shell that is not there.
+_SHELL_DESCRIPTION = "Execute a shell command in the current workspace. " + (
+    "The shell is Windows cmd.exe: use dir, type, findstr, and backslash paths, or run "
+    "`python -c` / `powershell -Command` for anything more."
+    if os.name == "nt"
+    else "The shell is /bin/sh."
+)
+
 
 def get_builtin_tools() -> list[Tool]:
     tools = [
@@ -113,36 +122,8 @@ def get_builtin_tools() -> list[Tool]:
             handler=_glob_files,
         ),
         Tool(
-            name="glob_files",
-            description="Alias of glob. Find files by glob pattern inside the current workspace.",
-            parameters=object_schema(
-                {
-                    "pattern": {"type": "string", "description": "Glob pattern"},
-                    "limit": {"type": "number", "description": "Maximum results"},
-                },
-                ["pattern"],
-            ),
-            required_keys=["pattern"],
-            handler=_glob_files,
-        ),
-        Tool(
             name="grep",
             description="Search text in workspace files.",
-            parameters=object_schema(
-                {
-                    "pattern": {"type": "string", "description": "Regex or plain text pattern"},
-                    "path": {"type": "string", "description": "Optional path to search"},
-                    "regex": {"type": "boolean", "description": "Treat pattern as regex"},
-                    "limit": {"type": "number", "description": "Maximum matches"},
-                },
-                ["pattern"],
-            ),
-            required_keys=["pattern"],
-            handler=_grep,
-        ),
-        Tool(
-            name="grep_code",
-            description="Alias of grep. Search text in workspace files.",
             parameters=object_schema(
                 {
                     "pattern": {"type": "string", "description": "Regex or plain text pattern"},
@@ -197,24 +178,7 @@ def get_builtin_tools() -> list[Tool]:
         ),
         Tool(
             name="bash",
-            description="Execute a shell command in the current workspace.",
-            parameters=object_schema(
-                {
-                    "command": {"type": "string", "description": "Shell command"},
-                    "timeout": {"type": "number", "description": "Timeout seconds"},
-                },
-                ["command"],
-            ),
-            required_keys=["command"],
-            handler=_bash,
-            is_read_only=False,
-            is_concurrency_safe=False,
-            danger_level="high",
-            requires_approval=True,
-        ),
-        Tool(
-            name="execute_command",
-            description="Alias of bash. Execute a shell command in the current workspace.",
+            description=_SHELL_DESCRIPTION,
             parameters=object_schema(
                 {
                     "command": {"type": "string", "description": "Shell command"},

@@ -59,9 +59,9 @@ This document tracks the capabilities implemented in the Python package and the 
   - `read_file`
   - `write_file`
   - `list_dir`
-  - `glob` / `glob_files`
-  - `grep` / `grep_code`
-  - `bash` / `execute_command`
+  - `glob`
+  - `grep`
+  - `bash`
   - `web_search`
   - `web_fetch`
   - `save_memory`

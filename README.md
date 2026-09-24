@@ -16,7 +16,7 @@ The project is designed as a practical coding-agent workbench rather than a UI-o
 - Built-in file, shell, grep, glob, memory, web search, web fetch, code search, skill, and snapshot tools
 - HITL confirmation, command/path safety policies, and JSONL audit logs
 - MCP client for stdio and Streamable HTTP servers
-- Built-in MCP server mode for exposing AgentCLI tools
+- MCP server mode (official SDK, stdio and Streamable HTTP) exposing AgentCLI tools to other agents
 - Runtime API for threads, turns, event logs, and durable background tasks
 - Project-scoped SQLite memory with relevance recall, deduplication, TTL, and capacity control
 - Layered context compression: stale tool results cleared first, then an LLM rolling summary with a deterministic fallback
@@ -162,9 +162,9 @@ uv run agentcli -p "Explain this repository"
 - `read_file`
 - `write_file`
 - `list_dir`
-- `glob` / `glob_files`
-- `grep` / `grep_code`
-- `bash` / `execute_command`
+- `glob`
+- `grep`
+- `bash`
 - `web_search`
 - `web_fetch`
 - `save_memory`
@@ -239,11 +239,18 @@ List configured MCP servers:
 uv run agentcli mcp list
 ```
 
-Expose AgentCLI tools as an MCP server:
+Expose AgentCLI tools as an MCP server, so another agent or IDE can use them:
 
 ```bash
-uv run agentcli mcp serve --transport stdio
-uv run agentcli mcp serve --transport http --port 3000
+uv run agentcli mcp serve --transport stdio --cwd /path/to/project
+uv run agentcli mcp serve --transport http --port 3000      # http://127.0.0.1:3000/mcp
+uv run agentcli mcp serve --read-only                       # only tools that change nothing
+```
+
+The server is built on the official MCP SDK. Each tool is annotated as read-only or destructive so the connecting client can ask for approval accordingly; AgentCLI's path and command guards still apply. HTTP listens on 127.0.0.1 only and rejects requests whose Host or Origin is not local, so a web page open in your browser cannot drive it. For example, to let Claude Code use AgentCLI's tools on a project:
+
+```bash
+claude mcp add agentcli -- uv run --project /path/to/AgentCLI agentcli mcp serve --cwd /path/to/project
 ```
 
 ## Runtime API
