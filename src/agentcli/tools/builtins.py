@@ -631,8 +631,13 @@ async def _load_skill(payload: dict[str, Any], context: ToolContext) -> ToolResu
     if not skill:
         return ToolResult(f'Skill "{payload["name"]}" not found or disabled.', is_error=True)
     content = skill.body or skill.content
-    if len(content) > 20_000:
-        content = content[:20_000] + "\n... [truncated; use /skill show for the full skill]"
+    if len(content) > _SKILL_BODY_LIMIT:
+        # Never drop the rest silently: say where it continues so the model can read it.
+        shown = content[:_SKILL_BODY_LIMIT]
+        content = (
+            f"{shown}\n... [manual continues; read the rest with read_file path={skill.path} "
+            f"offset={shown.count(chr(10)) + 1}]"
+        )
     content += _skill_files_note(skill.path.parent)
     if context.skill_context_buffer:
         context.skill_context_buffer.push(skill.name, content)
@@ -641,6 +646,11 @@ async def _load_skill(payload: dict[str, Any], context: ToolContext) -> ToolResu
             display_summary=f"Loaded skill {skill.name}",
         )
     return ToolResult(content, display_summary=f"Loaded skill {skill.name}")
+
+
+# Loaded only on request, so a full manual is affordable; skills written to the common
+# "under 500 lines" guideline fit.
+_SKILL_BODY_LIMIT = 50_000
 
 
 def _skill_files_note(skill_dir) -> str:
