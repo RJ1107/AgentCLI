@@ -35,6 +35,7 @@ from agentcli.policy import AuditLog
 from agentcli.prompt import PromptAssembler
 from agentcli.rag import CodeIndex
 from agentcli.render import RichRenderer
+from agentcli.routing import IntentRouter, ModelTiers, RouteDecision
 from agentcli.runtime import DurableTaskManager
 from agentcli.skill import SkillRegistry
 from agentcli.snapshot import SnapshotService
@@ -139,6 +140,27 @@ def _confirm_after_idle(console: Console, reminder: CacheReminder) -> str:
     default = "c" if reminder.level == "stale" else "y"
     console.print("[dim]y 直接发送 · c 先压缩再发送 · n 取消[/dim]")
     return Prompt.ask("继续？", choices=["y", "c", "n"], default=default)
+
+
+_MODE_PITCH = {
+    "plan": "/plan：先拆成多个步骤，再按依赖顺序（能并行的并行）执行",
+    "team": "/team：拆给多个 Worker 并行做，每一步都有 Reviewer 把关",
+}
+
+
+def _confirm_mode(console: Console, decision: RouteDecision) -> str:
+    """Offer /plan or /team for a request that looks large. Returns r, p, t, or x."""
+
+    if not sys.stdin.isatty():
+        return "r"
+    why = "；".join(decision.reasons) or "需求较复杂"
+    source = {"rules": "规则判断", "model": "模型判断", "jev": "Jev 判断"}.get(
+        decision.source, decision.source
+    )
+    console.print(f"[yellow]这个任务看起来比较大[/yellow]（{source}）：{why}。")
+    console.print(f"建议用 {_MODE_PITCH[decision.mode]}。")
+    console.print("[dim]r 直接执行 · p 用 /plan · t 用 /team · x 直接执行，本次会话不再提示[/dim]")
+    return Prompt.ask("怎么做？", choices=["r", "p", "t", "x"], default=decision.mode[0])
 
 
 async def _compact(agent: Agent, console: Console, focus: str = "") -> None:
@@ -271,6 +293,8 @@ async def start_repl(cwd: str, config: AgentCliConfig) -> None:
         key_bindings=_permission_key_bindings(permission_mode),
     )
 
+    # Set when the user picks "don't suggest again" for /plan or /team this session.
+    mode_hints_off = False
     try:
         while True:
             try:
@@ -296,6 +320,16 @@ async def start_repl(cwd: str, config: AgentCliConfig) -> None:
                         continue
                     if choice == "c":
                         await _compact(agent, console)
+                if config.routing.suggest_modes and not mode_hints_off:
+                    router = IntentRouter(config, ModelTiers(config, agent.llm_client))
+                    with console.status("判断任务规模……"):
+                        decision = await router.route(message)
+                    if decision.mode != "react":
+                        pick = _confirm_mode(console, decision)
+                        if pick == "x":
+                            mode_hints_off = True
+                        elif pick in {"p", "t"}:
+                            message = f"{'/plan' if pick == 'p' else '/team'} {message}"
             if message.startswith("/"):
                 should_exit = await _handle_slash(
                     message,
@@ -425,6 +459,7 @@ async def _handle_slash(
                 config=config,
                 cwd=cwd,
                 approval_callback=agent.approval_callback,
+                tiers=ModelTiers(config, agent.llm_client),
             )
             await _run_events(
                 plan_agent.run(arg),
@@ -447,6 +482,7 @@ async def _handle_slash(
                 cwd=cwd,
                 approval_callback=agent.approval_callback,
                 default_worker_mode=worker_mode,
+                tiers=ModelTiers(config, agent.llm_client),
             )
             await _run_events(
                 orchestrator.run(team_task),

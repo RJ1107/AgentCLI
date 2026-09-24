@@ -8,6 +8,7 @@ from agentcli.agent.plan_execute import PlanExecuteAgent
 from agentcli.config import AgentCliConfig
 from agentcli.llm.base import LlmClient
 from agentcli.prompt import PromptAssembler
+from agentcli.routing import ModelTiers
 from agentcli.tools.registry import ToolRegistry
 from agentcli.types import Message, QueryResult, Usage
 
@@ -55,6 +56,7 @@ class QueryEngine:
             config=self.config,
             cwd=self.cwd,
             approval_callback=self.approval_callback,
+            tiers=ModelTiers(self.config, self.llm_client),
         )
         async for event in agent.run(message):
             yield event
@@ -67,6 +69,7 @@ class QueryEngine:
             cwd=self.cwd,
             approval_callback=self.approval_callback,
             default_worker_mode=worker_mode,
+            tiers=ModelTiers(self.config, self.llm_client),
         )
         async for event in orchestrator.run(message):
             yield event

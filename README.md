@@ -205,6 +205,25 @@ Providers keep the prompt cache only for a while and do not report when it expir
 
 File edits are guarded: `edit_file` requires a unique match (or `replace_all`), and both `edit_file` and `write_file` refuse to change an existing file that has not been read, or that changed since it was last read.
 
+## Routing
+
+Before a request runs in normal mode, AgentCLI estimates how big it is. Built-in rules decide instantly when the signal is clear (length, step words such as "首先/然后/最后", listed items, scope words such as "整个/重构/迁移", fan-out words such as "分别/并行"). Only unclear requests go to a classifier, tried in the order of `routing.classifiers`: Jev (`jev_enabled` plus `TYPESAFE_API_KEY`), then a cheap model (`classifier_model`). Each has a timeout, and a classifier that is disabled, slow, or down is skipped, so the rules' verdict is always the fallback. A request judged large gets a prompt to switch to `/plan` or `/team` (or to stop asking for the session).
+
+`/plan` and `/team` can use a different model per role, as `"provider:model"` in `routing`:
+
+```json
+{
+  "routing": {
+    "planner_model": "openrouter:anthropic/claude-opus-5.5",
+    "fast_model": "openrouter:openai/gpt-6-luna",
+    "strong_model": "openrouter:openai/gpt-6-sol",
+    "top_model": "openrouter:anthropic/claude-opus-5.5"
+  }
+}
+```
+
+The planner writes each step as self-contained instructions and marks it easy or hard. Easy steps run on the fast model, hard ones on the strong model. In `/team` the reviewer is always one tier above the worker, so no model grades its own work. After `attempts_per_tier` rejections (default 2) a step moves up one tier, at most `max_escalations` times (default 1); if it is still rejected it fails with the reviewer's issues in the final report instead of retrying forever. Unset roles use the session model, and a role whose provider key is missing falls back to it too.
+
 ## Skills
 
 A skill is a folder with a `SKILL.md` manual (YAML frontmatter with `name` and `description`, then instructions) and, optionally, scripts and reference files the manual points to. The format matches the SKILL.md skills published for other agents, so most of them install unchanged.

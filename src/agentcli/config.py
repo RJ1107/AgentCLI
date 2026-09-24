@@ -117,6 +117,32 @@ class FeatureConfig:
 
 
 @dataclass(slots=True)
+class RoutingConfig:
+    """Intent recognition before a request, and which model does what in /plan and /team."""
+
+    # Suggest /plan or /team when a request in normal mode looks like a large task.
+    suggest_modes: bool = True
+    # Classifiers asked when the built-in rules are unsure, in order; each may be missing,
+    # slow, or down, and the rules' own verdict is always the fallback. "jev" needs
+    # TYPESAFE_API_KEY; "llm" uses classifier_model.
+    classifiers: list[str] = field(default_factory=lambda: ["jev", "llm"])
+    jev_enabled: bool = False
+    jev_model: str = "jev-latest"
+    jev_timeout: float = 1.5
+    classifier_model: str = ""  # "provider:model"; empty means fast_model, then the session model
+    classifier_timeout: float = 6.0
+    # Model tiers as "provider:model" (e.g. "openrouter:openai/gpt-6-sol"); empty means the
+    # session model, so nothing changes until they are set.
+    planner_model: str = ""
+    fast_model: str = ""
+    strong_model: str = ""
+    top_model: str = ""
+    # Team mode: attempts per tier before moving the step up one tier, and how many times.
+    attempts_per_tier: int = 2
+    max_escalations: int = 1
+
+
+@dataclass(slots=True)
 class AgentCliConfig:
     llm: LlmConfig = field(default_factory=LlmConfig)
     render_mode: str = "inline"
@@ -126,6 +152,7 @@ class AgentCliConfig:
     policy: PolicyConfig = field(default_factory=PolicyConfig)
     prompt: PromptConfig = field(default_factory=PromptConfig)
     features: FeatureConfig = field(default_factory=FeatureConfig)
+    routing: RoutingConfig = field(default_factory=RoutingConfig)
 
 
 def load_config(
@@ -305,6 +332,7 @@ def _dict_to_config(data: dict[str, Any]) -> AgentCliConfig:
         policy=PolicyConfig(**data.get("policy", {})),
         prompt=PromptConfig(**data.get("prompt", {})),
         features=FeatureConfig(**data.get("features", {})),
+        routing=RoutingConfig(**data.get("routing", {})),
     )
 
 

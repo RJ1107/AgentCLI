@@ -12,6 +12,8 @@ from agentcli.agent.query import query
 from agentcli.config import AgentCliConfig
 from agentcli.llm.base import LlmClient
 from agentcli.prompt import PromptAssembler
+from agentcli.routing import ModelTiers, next_tier
+from agentcli.routing.models import Tier
 from agentcli.skill import SkillContextBuffer
 from agentcli.snapshot import TurnSnapshot
 from agentcli.tools.registry import ToolRegistry
@@ -90,9 +92,11 @@ class ExecutionStep:
     mode: str = AgentRunMode.REACT.value
     result: str = ""
     status: StepStatus = StepStatus.PENDING
+    difficulty: str = "easy"
+    model: str = ""
 
-    def with_result(self, result: str) -> ExecutionStep:
-        return replace(self, result=result, status=StepStatus.COMPLETED)
+    def with_result(self, result: str, *, model: str = "") -> ExecutionStep:
+        return replace(self, result=result, status=StepStatus.COMPLETED, model=model)
 
     def with_failed(self, result: str) -> ExecutionStep:
         return replace(self, result=result, status=StepStatus.FAILED)
@@ -266,8 +270,12 @@ class SubAgent:
         role_prompt = {
             AgentRole.PLANNER: (
                 "You are the Planner in a multi-agent workflow. Return only JSON with a "
-                "steps array. Each step needs id, description, type, dependencies, and optional "
-                'mode ("react" or "plan"). Use plan only when a worker needs its own nested DAG.'
+                "steps array. Each step needs id, description, type, dependencies, difficulty "
+                '("easy" or "hard"), and optional mode ("react" or "plan"). Use plan only when a '
+                "worker needs its own nested DAG. Workers see only their step, so write each "
+                "description as complete instructions: files, the change, and what done means. "
+                "easy: reading, searching, small specified edits, running tests (a fast model); "
+                "hard: design, multi-file changes, unclear bugs (a stronger model)."
             ),
             AgentRole.WORKER: (
                 "You are the Worker in a multi-agent workflow. Execute only the assigned "
@@ -295,8 +303,10 @@ class AgentOrchestrator:
         worker_count: int = 2,
         default_worker_mode: str = AgentRunMode.REACT.value,
         turn_snapshot: TurnSnapshot | None = None,
+        tiers: ModelTiers | None = None,
     ):
         self.llm_client = llm_client
+        self.tiers = tiers
         self.tool_registry = tool_registry
         self.config = config
         self.cwd = cwd
@@ -305,6 +315,8 @@ class AgentOrchestrator:
         self._outer_snapshot = turn_snapshot
         self.turn_snapshot: TurnSnapshot | None = turn_snapshot
         self.planner = self._subagent("planner", AgentRole.PLANNER)
+        if tiers is not None:
+            self.planner.llm_client = tiers.planner()
         self.workers = [
             self._subagent(f"worker-{index}", AgentRole.WORKER)
             for index in range(1, max(1, worker_count) + 1)
@@ -419,50 +431,69 @@ class AgentOrchestrator:
         worker: SubAgent,
         reviewer: SubAgent,
     ) -> None:
+        """Run one step until a reviewer approves it, climbing the model ladder if needed.
+
+        With model tiers configured, an easy step starts on the fast model and a hard one on
+        the strong model; the reviewer is always one tier above the worker, so no model grades
+        its own work. After attempts_per_tier rejections the step moves up one tier, at most
+        max_escalations times; if it is still rejected it fails with the reviewer's issues, for
+        the user to decide, instead of retrying forever. Without tiers, one model retries
+        max_retries_per_step times, as before.
+        """
+
         self._update_step(steps, step.id, step.started())
         context = self.build_step_context(steps, step)
         task_msg = AgentMessage.task("orchestrator", step.description)
-        result = await worker.execute(task_msg, context, mode=step.mode)
-        self.total_usage = self.total_usage + result.usage
-        self.total_turns += result.turns
-        if result.type == AgentMessageType.ERROR or not result.content.strip():
-            self._update_step(steps, step.id, step.with_failed(result.content or "empty result"))
-            return
+        tiered = self.tiers is not None and self.tiers.configured
+        tier: Tier = "strong" if step.difficulty == "hard" else "fast"
+        attempts = (
+            self.config.routing.attempts_per_tier if tiered else 1 + self.max_retries_per_step
+        )
+        escalations_left = self.config.routing.max_escalations if tiered else 0
+        issues, tries, path = "", 0, []
 
-        accepted_result = result.content
-        review = await reviewer.review(step.description, accepted_result)
-        self.total_usage = self.total_usage + review.usage
-        self.total_turns += review.turns
-        reviewer.clear_history()
-        approved = self.parse_review_approval(review.content)
-        issues = self.parse_review_issues(review.content)
-        retries = retry_count.get(step.id, 0)
-        while not approved and retries < self.max_retries_per_step:
-            retries += 1
-            retry_count[step.id] = retries
-            retry_context = context + f"\n\nReviewer rejected the previous result:\n{issues}"
-            retry_result = await worker.execute(task_msg, retry_context, mode=step.mode)
-            self.total_usage = self.total_usage + retry_result.usage
-            self.total_turns += retry_result.turns
-            if retry_result.type == AgentMessageType.ERROR or not retry_result.content.strip():
-                issues = retry_result.content or "empty retry result"
-                continue
-            accepted_result = retry_result.content
-            retry_review = await reviewer.review(step.description, accepted_result)
-            self.total_usage = self.total_usage + retry_review.usage
-            self.total_turns += retry_review.turns
-            reviewer.clear_history()
-            approved = self.parse_review_approval(retry_review.content)
-            issues = self.parse_review_issues(retry_review.content)
+        while True:
+            if tiered:
+                worker.llm_client = self.tiers.worker(tier)
+                reviewer.llm_client = self.tiers.reviewer(tier)
+            path.append(_model_name(worker))
+            for _attempt in range(max(1, attempts)):
+                tries += 1
+                retry_count[step.id] = tries - 1
+                feedback = f"\n\nReviewer rejected the previous result:\n{issues}" if issues else ""
+                result = await worker.execute(task_msg, context + feedback, mode=step.mode)
+                self._count(result)
+                if result.type == AgentMessageType.ERROR or not result.content.strip():
+                    issues = result.content or "empty result"
+                    continue
+                review = await reviewer.review(step.description, result.content)
+                self._count(review)
+                reviewer.clear_history()
+                if self.parse_review_approval(review.content):
+                    self._update_step(
+                        steps, step.id, step.with_result(result.content, model=path[-1])
+                    )
+                    return
+                issues = self.parse_review_issues(review.content)
+            if escalations_left <= 0 or tier == "top":
+                break
+            escalations_left -= 1
+            tier = next_tier(tier)
 
-        if not approved:
-            self._update_step(
-                steps,
-                step.id,
-                step.with_failed(f"review rejected after {retries} retries: {issues}"),
-            )
-            return
-        self._update_step(steps, step.id, step.with_result(accepted_result))
+        models = " → ".join(name for name in path if name)
+        self._update_step(
+            steps,
+            step.id,
+            step.with_failed(
+                f"review rejected after {tries} attempts"
+                + (f" ({models})" if models else "")
+                + f": {issues}"
+            ),
+        )
+
+    def _count(self, message: AgentMessage) -> None:
+        self.total_usage = self.total_usage + message.usage
+        self.total_turns += message.turns
 
     def parse_plan(self, plan_json: str) -> list[ExecutionStep]:
         try:
@@ -486,6 +517,9 @@ class AgentOrchestrator:
                     description=str(node.get("description") or original_id),
                     type=str(node.get("type") or "COMMAND"),
                     dependencies=[],
+                    difficulty=(
+                        "hard" if str(node.get("difficulty") or "").lower() == "hard" else "easy"
+                    ),
                     mode=_normalize_worker_mode(
                         str(
                             node.get("mode")
@@ -584,7 +618,8 @@ class AgentOrchestrator:
                 StepStatus.PENDING: "PENDING",
                 StepStatus.RUNNING: "RUNNING",
             }[step.status]
-            lines.append(f"- [{step.id}] {icon}: {step.description}")
+            by = f" ({step.model})" if step.model else ""
+            lines.append(f"- [{step.id}] {icon}{by}: {step.description}")
             if step.result:
                 lines.append(f"  Result: {_preview(step.result)}")
         return "\n".join(lines) + "\n"
@@ -681,3 +716,7 @@ def _calculate_costs(llm_client: LlmClient, usage: Usage) -> dict[str, Any]:
         except (KeyError, TypeError, ValueError):
             continue
     return result
+
+
+def _model_name(agent) -> str:
+    return str(getattr(getattr(agent, "llm_client", None), "model_name", "") or "")

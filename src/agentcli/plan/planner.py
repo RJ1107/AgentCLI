@@ -19,11 +19,16 @@ PLANNER_PROMPT = """你是 AgentCLI 的任务规划器。
       "id": "stable_source_id",
       "description": "concrete executable step",
       "type": "FILE_READ|FILE_WRITE|COMMAND|ANALYSIS|VERIFICATION",
+      "difficulty": "easy|hard",
       "dependencies": ["stable_source_id"]
     }
   ]
 }
 可以并行的独立任务应放在同一执行批次中。
+每个任务会交给一个看不到本次对话的执行者，所以 description 要写成能直接照做的完整指令：
+涉及哪些文件、要做什么改动、怎样算完成。
+difficulty：读取、查找、按明确说明做的小改动、运行测试为 easy；需要设计、跨多个文件的改动、
+排查原因不明的问题为 hard。easy 交给快速模型，hard 交给更强的模型。
 summary 和 description 必须使用与用户目标相同的语言；用户目标包含中文时，必须使用中文。
 JSON 字段名、任务 id 和 type 枚举值保持上述英文格式。
 """
@@ -104,6 +109,7 @@ class Planner:
                     id=new_id,
                     description=str(node.get("description") or original_id),
                     type=_parse_task_type(str(node.get("type") or "ANALYSIS")),
+                    difficulty=_parse_difficulty(node.get("difficulty")),
                 )
             )
 
@@ -161,6 +167,11 @@ def _parse_json_object(text: str) -> dict[str, Any]:
     if not cleaned:
         raise ValueError("empty planner output")
     return json.loads(cleaned)
+
+
+def _parse_difficulty(value) -> str:
+    # Anything but an explicit "hard" is easy: a missing label should not cost a strong model.
+    return "hard" if str(value or "").strip().lower() == "hard" else "easy"
 
 
 def _parse_task_type(value: str) -> TaskType:

@@ -42,6 +42,8 @@ class Task:
     error: str = ""
     start_time: float = 0.0
     end_time: float = 0.0
+    # Set by the planner: "easy" steps go to the fast model, "hard" ones to the strong one.
+    difficulty: str = "easy"
 
     def add_dependency(self, task_id: str) -> None:
         if task_id not in self.dependencies:
@@ -190,10 +192,12 @@ class ExecutionPlan:
         batches = self.execution_batches()
         first_batch = ", ".join(task.id for task in batches[0]) if batches else "无"
         final_batch = ", ".join(task.id for task in batches[-1]) if batches else "无"
+        hard = [task.id for task in self.tasks.values() if task.difficulty == "hard"]
         return (
             f"计划 {self.id}：{self.summary or self.goal}\n"
             f"任务数：{len(self.tasks)} | 并行批次：{len(batches)} | "
             f"当前可执行：{len(self.executable_tasks())}\n"
             f"首批任务：{first_batch}\n"
             f"最终汇总：{final_batch}"
+            + (f"\n困难任务（交给更强的模型）：{', '.join(hard)}" if hard else "")
         )

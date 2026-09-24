@@ -25,6 +25,7 @@ from agentcli.config import AgentCliConfig
 from agentcli.context import CompressionResult, build_summarizer, estimate_request_tokens
 from agentcli.llm.base import LlmClient
 from agentcli.prompt import PromptAssembler
+from agentcli.routing import ModelTiers
 from agentcli.skill import SkillContextBuffer
 from agentcli.snapshot import TurnSnapshot
 from agentcli.tools.registry import ToolRegistry
@@ -254,6 +255,7 @@ class Agent:
             approval_callback=self.approval_callback,
             max_task_turns=self.max_turns,
             turn_snapshot=turn_snapshot,
+            tiers=ModelTiers(self.config, self.llm_client),
         )
         agent.history = list(self.history)
 
@@ -276,6 +278,7 @@ class Agent:
             approval_callback=self.approval_callback,
             default_worker_mode="react",
             turn_snapshot=turn_snapshot,
+            tiers=ModelTiers(self.config, self.llm_client),
         )
         async for event in orchestrator.run(message):
             if event.get("type") == "done":

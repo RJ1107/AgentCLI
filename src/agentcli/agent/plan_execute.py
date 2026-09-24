@@ -10,6 +10,7 @@ from agentcli.config import AgentCliConfig
 from agentcli.llm.base import LlmClient
 from agentcli.plan import ExecutionPlan, Planner, Task, TaskStatus
 from agentcli.prompt import PromptAssembler
+from agentcli.routing import ModelTiers
 from agentcli.skill import SkillContextBuffer
 from agentcli.snapshot import TurnSnapshot
 from agentcli.tools.registry import ToolRegistry
@@ -41,13 +42,16 @@ class PlanExecuteAgent:
         planner: Planner | None = None,
         max_task_turns: int = 8,
         turn_snapshot: TurnSnapshot | None = None,
+        tiers: ModelTiers | None = None,
     ):
         self.llm_client = llm_client
+        # Model per role (planner, fast and strong workers); None means one model for all.
+        self.tiers = tiers
         self.tool_registry = tool_registry
         self.config = config
         self.cwd = cwd
         self.approval_callback = approval_callback
-        self.planner = planner or Planner(llm_client)
+        self.planner = planner or Planner(tiers.planner() if tiers else llm_client)
         self.max_task_turns = max_task_turns
         self.history: list[Message] = []
         # Given by an outer run (Agent, Team worker) that owns the request; else one per run().
@@ -210,10 +214,12 @@ class PlanExecuteAgent:
         task: Task,
     ) -> AsyncIterator[dict[str, Any]]:
         task.mark_started()
+        client = self._task_client(task)
         yield {
             "type": "plan_task_started",
             "task_id": task.id,
             "task_description": task.description,
+            "model": client.model_name,
         }
         text = ""
         tool_results: list[str] = []
@@ -221,7 +227,7 @@ class PlanExecuteAgent:
         turns = 0
         try:
             async for event in query(
-                llm_client=self.llm_client,
+                llm_client=client,
                 tool_registry=self.tool_registry,
                 system_prompt=self._task_system_prompt(plan, task),
                 user_message=_task_context(plan, task),
@@ -268,6 +274,11 @@ class PlanExecuteAgent:
                     error=exc,
                 ),
             }
+
+    def _task_client(self, task: Task) -> LlmClient:
+        if self.tiers is None:
+            return self.llm_client
+        return self.tiers.worker("strong" if task.difficulty == "hard" else "fast")
 
     def _task_system_prompt(self, plan: ExecutionPlan, task: Task) -> str:
         base = PromptAssembler(
