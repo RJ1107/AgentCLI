@@ -107,14 +107,26 @@ class OpenAICompatibleClient:
                     "Check the API key, model access, account balance, and provider status."
                 ),
             }
-        except httpx.RequestError:
-            yield {
-                "type": "error",
-                "error": RuntimeError(
-                    f"Could not connect to {self.provider_name} at {self.base_url}. "
-                    "Check the network, VPN/proxy, and provider status, then retry."
-                ),
-            }
+        except httpx.RequestError as exc:
+            yield {"type": "error", "error": RuntimeError(self._connection_hint(exc))}
+
+    def _connection_hint(self, exc: httpx.RequestError) -> str:
+        detail = str(exc)
+        message = f"Could not connect to {self.provider_name} at {self.base_url} ({detail[:120]})."
+        # A reset right after connecting, during the TLS handshake (where the host name is
+        # visible), is the signature of a network that blocks this domain: campus or company
+        # firewalls, some VPN routes. Retrying the same network will not help.
+        if isinstance(exc, httpx.ConnectError) and (
+            "10054" in detail or "reset" in detail.lower() or "forcibly closed" in detail.lower()
+        ):
+            return (
+                message + " The connection was reset during setup, which usually means this "
+                "network blocks the domain. Try another network (a phone hotspot, say), route it "
+                "through a VPN, or reach the same model through OpenRouter."
+            )
+        if isinstance(exc, httpx.TimeoutException):
+            return message + " The request timed out; retry, or check the network and proxy."
+        return message + " Check the network, VPN/proxy, and provider status, then retry."
 
     def _build_payload(
         self,

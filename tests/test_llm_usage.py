@@ -41,6 +41,22 @@ def test_connection_error_becomes_recoverable_error_event(monkeypatch) -> None:
     assert "VPN/proxy" in str(events[-1]["error"])
 
 
+def test_reset_during_connection_setup_points_at_network_blocking(monkeypatch) -> None:
+    def reset_stream(*args, **kwargs):
+        request = httpx.Request("POST", "https://api.deepseek.com/v1/chat/completions")
+        raise httpx.ConnectError(
+            "[WinError 10054] An existing connection was forcibly closed by the remote host",
+            request=request,
+        )
+
+    monkeypatch.setattr(httpx.AsyncClient, "stream", reset_stream)
+
+    message = str(asyncio.run(_collect_chat_events(_client()))[-1]["error"])
+
+    assert "10054" in message  # the real cause is no longer hidden
+    assert "network blocks the domain" in message and "OpenRouter" in message
+
+
 def test_timeout_becomes_recoverable_error_event(monkeypatch) -> None:
     def fail_stream(*args, **kwargs):
         request = httpx.Request("POST", "https://api.deepseek.com/v1/chat/completions")
