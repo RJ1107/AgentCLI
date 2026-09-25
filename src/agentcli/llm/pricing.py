@@ -101,7 +101,7 @@ DEEPSEEK_V4_PRICE_PROFILES: dict[str, ModelPriceProfile] = {
 
 
 OPENROUTER_PRICING_SOURCE = "https://openrouter.ai/api/v1/models"
-OPENROUTER_PRICING_AS_OF = "2026-09-24"
+OPENROUTER_PRICING_AS_OF = "2026-09-25"
 
 # The OpenRouter models offered in /model: (id, context window, input, cached input, output),
 # prices in USD per 1M tokens, generated from OpenRouter's models API on the date above. Each
@@ -111,11 +111,11 @@ OPENROUTER_CATALOG: tuple[tuple[str, int, float, float, float], ...] = (
     ("openai/gpt-6-sol", 1_050_000, 2.0, 0.2, 10.0),
     ("openai/gpt-6-luna", 1_050_000, 0.1, 0.01, 0.5),
     ("anthropic/claude-opus-5.5", 1_000_000, 4.0, 0.2, 20.0),
-    ("deepseek/deepseek-v4-flash", 1_048_576, 0.088606, 0.017721, 0.177212),
-    ("deepseek/deepseek-v4.1-flash", 1_048_576, 0.14, 0.0042, 0.42),
+    ("deepseek/deepseek-v4-flash", 1_048_576, 0.049, 0.0098, 0.098),
+    ("deepseek/deepseek-v4.1-flash", 1_048_576, 0.15, 0.003, 0.6),
     ("deepseek/deepseek-v4-pro-0813", 1_048_576, 0.462, 0.0154, 1.386),
-    ("z-ai/glm-5.3", 1_310_720, 0.84, 0.156, 2.64),
-    ("z-ai/glm-5.3-flash", 1_310_720, 0.15, 0.05, 0.5),
+    ("z-ai/glm-5.3", 1_310_720, 1.4, 0.26, 4.4),
+    ("z-ai/glm-5.3-flash", 1_310_720, 0.045, 0.0285, 0.6),
     ("qwen/qwen3.8-flash", 1_000_000, 0.15, 0.016, 0.47),
     ("google/gemini-3.8-flash", 1_048_576, 0.75, 0.075, 3.75),
 )

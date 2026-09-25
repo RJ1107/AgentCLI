@@ -70,6 +70,7 @@ class QueryEngine:
             approval_callback=self.approval_callback,
             default_worker_mode=worker_mode,
             tiers=ModelTiers(self.config, self.llm_client),
+            worker_count=self.config.routing.team_workers,
         )
         async for event in orchestrator.run(message):
             yield event

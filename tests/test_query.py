@@ -176,3 +176,65 @@ def test_query_integrates_context_compression_and_detailed_usage(tmp_path, monke
     assert result.total_tokens == 128
     assert result.usage.cache_hit_tokens == 20
     assert result.usage.cache_miss_tokens == 100
+
+
+class CutOffClient:
+    """First reply hits the output limit mid tool call; the agent must not stop there."""
+
+    model_name = "fake-model"
+    provider_name = "fake-provider"
+    max_context_window = 100_000
+
+    def __init__(self):
+        self.calls = 0
+        self.seen: list[list[Message]] = []
+
+    async def chat(self, messages, tools, *, system_prompt):  # noqa: ARG002
+        self.calls += 1
+        self.seen.append(list(messages))
+        if self.calls == 1:
+            yield {
+                "type": "tool_call_delta",
+                "tool_call": {
+                    "index": 0,
+                    "id": "call_1",
+                    "function": {"name": "read_file", "arguments": '{"path":"note.txt"}'},
+                },
+            }
+            yield {
+                "type": "tool_call_delta",
+                "tool_call": {
+                    "index": 1,
+                    "id": "call_2",
+                    "function": {"name": "write_file", "arguments": '{"path":"a.py","content":"de'},
+                },
+            }
+            yield {"type": "message_end", "stop_reason": "max_tokens"}
+        else:
+            yield {"type": "text_delta", "text": "continued"}
+            yield {"type": "message_end", "stop_reason": "end_turn"}
+
+
+def test_cut_off_response_runs_complete_calls_and_asks_to_continue(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    (tmp_path / "note.txt").write_text("hello\n", encoding="utf-8")
+    config = load_config(project_root=tmp_path)
+    config.llm.api_key = "test-key"
+    config.policy.hitl_mode = "never"
+    registry = ToolRegistry()
+    registry.register_all(get_builtin_tools())
+    client = CutOffClient()
+    engine = QueryEngine(
+        llm_client=client, tool_registry=registry, config=config, cwd=str(tmp_path)
+    )
+
+    result = asyncio.run(engine.ask_complete_async("do it"))
+
+    assert result.text.endswith("continued")
+    assert client.calls == 2
+    second = client.seen[1]
+    # The whole read_file call ran; the cut-off write_file did not, and no half file exists.
+    assert any(m.role == "tool" and "1: hello" in str(m.content) for m in second)
+    assert not (tmp_path / "a.py").exists()
+    assert "output limit" in str(second[-1].content)
+    assert second[-1].role == "user"

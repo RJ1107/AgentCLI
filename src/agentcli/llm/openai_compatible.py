@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -7,6 +8,7 @@ from typing import Any
 
 import httpx
 
+from agentcli import __version__
 from agentcli.llm.pricing import CostBreakdown, ModelPriceProfile, calculate_cost
 from agentcli.types import Message, Usage
 
@@ -71,44 +73,54 @@ class OpenAICompatibleClient:
         headers = {
             "authorization": f"Bearer {self.api_key}",
             "content-type": "application/json",
-            "user-agent": "AgentCLI-Python/0.1.0",
+            "user-agent": f"AgentCLI/{__version__}",
         }
         url = self.base_url.rstrip("/") + "/chat/completions"
 
         yield {"type": "message_start", "model": self.model}
-        try:
-            async with (
-                httpx.AsyncClient(timeout=self.timeout, http2=False) as client,
-                client.stream("POST", url, headers=headers, json=payload) as response,
-            ):
-                response.raise_for_status()
-                async for event in _iter_sse(response):
-                    if event == "[DONE]":
-                        break
-                    try:
-                        chunk = json.loads(event)
-                    except json.JSONDecodeError:
-                        continue
-                    async for parsed in self._parse_chunk(chunk):
-                        yield parsed
-        except httpx.TimeoutException:
-            yield {
-                "type": "error",
-                "error": RuntimeError(
-                    f"{self.provider_name} request timed out after {self.timeout:g}s. "
-                    "Check the network and retry."
-                ),
-            }
-        except httpx.HTTPStatusError as exc:
-            yield {
-                "type": "error",
-                "error": RuntimeError(
-                    f"{self.provider_name} API returned HTTP {exc.response.status_code}. "
-                    "Check the API key, model access, account balance, and provider status."
-                ),
-            }
-        except httpx.RequestError as exc:
-            yield {"type": "error", "error": RuntimeError(self._connection_hint(exc))}
+        for attempt in range(_MAX_ATTEMPTS):
+            retry_after: float | None = None
+            try:
+                async with (
+                    httpx.AsyncClient(timeout=self.timeout, http2=False) as client,
+                    client.stream("POST", url, headers=headers, json=payload) as response,
+                ):
+                    if response.status_code in _RETRYABLE and attempt + 1 < _MAX_ATTEMPTS:
+                        # Rate limits and overloaded upstreams answer before any output, so
+                        # nothing has been shown yet and the same request can simply go again.
+                        retry_after = _retry_delay(response, attempt)
+                    else:
+                        response.raise_for_status()
+                        async for event in _iter_sse(response):
+                            if event == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(event)
+                            except json.JSONDecodeError:
+                                continue
+                            async for parsed in self._parse_chunk(chunk):
+                                yield parsed
+            except httpx.TimeoutException:
+                yield {
+                    "type": "error",
+                    "error": RuntimeError(
+                        f"{self.provider_name} request timed out after {self.timeout:g}s. "
+                        "Check the network and retry."
+                    ),
+                }
+            except httpx.HTTPStatusError as exc:
+                yield {
+                    "type": "error",
+                    "error": RuntimeError(
+                        f"{self.provider_name} API returned HTTP {exc.response.status_code}. "
+                        "Check the API key, model access, account balance, and provider status."
+                    ),
+                }
+            except httpx.RequestError as exc:
+                yield {"type": "error", "error": RuntimeError(self._connection_hint(exc))}
+            if retry_after is None:
+                return
+            await asyncio.sleep(retry_after)
 
     def _connection_hint(self, exc: httpx.RequestError) -> str:
         detail = str(exc)
@@ -200,7 +212,7 @@ class OpenAICompatibleClient:
             return []
         headers = {
             "authorization": f"Bearer {self.api_key}",
-            "user-agent": "AgentCLI-Python/0.1.0",
+            "user-agent": f"AgentCLI/{__version__}",
         }
         url = self.base_url.rstrip("/") + "/models"
         async with httpx.AsyncClient(timeout=15.0, http2=False) as client:
@@ -263,6 +275,22 @@ def _readable_reasoning(details: Any) -> str:
         elif item.get("type") == "reasoning.text":
             parts.append(str(item.get("text") or ""))
     return "".join(parts)
+
+
+_RETRYABLE = {429, 500, 502, 503, 504}
+_MAX_ATTEMPTS = 4
+
+
+def _retry_delay(response: httpx.Response, attempt: int) -> float:
+    """Seconds before the next try: the server's Retry-After when sane, else 2, 5, 12."""
+
+    header = response.headers.get("retry-after", "")
+    try:
+        if header:
+            return min(30.0, max(0.5, float(header)))
+    except ValueError:
+        pass
+    return (2.0, 5.0, 12.0)[min(attempt, 2)]
 
 
 async def _iter_sse(response: httpx.Response) -> AsyncIterator[str]:

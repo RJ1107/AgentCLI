@@ -112,3 +112,47 @@ def test_small_older_part_skips_the_llm_call():
     result = asyncio.run(manager.prepare_async(_chat(0, 8, 240), summarizer=summarizer))
 
     assert result.method == "extractive"
+
+
+def test_summarizes_only_down_to_the_target_keeping_newer_turns_verbatim():
+    budget = ContextBudget(
+        context_window=20_000, max_output_tokens=1_000, compression_target=0.55, reserve_tokens=0
+    )
+    manager = ContextWindowManager(budget, min_recent_messages=2, summary_max_chars=1_000)
+    messages = _chat(0, 60, size=600)
+
+    result = manager.prepare(messages)
+
+    kept = [m for m in result.messages if m.role == "user" and "request" in str(m.content)]
+    # Far more than min_recent_messages survive verbatim, the newest ones, and the request
+    # still ends under the target.
+    assert len(kept) > 5
+    assert "request 59" in str(kept[-1].content)
+    assert result.estimated_tokens_after <= budget.compression_target_tokens
+
+
+def test_manual_compact_still_keeps_only_the_last_few_messages():
+    budget = ContextBudget(context_window=200_000, max_output_tokens=1_000)
+    manager = ContextWindowManager(budget, min_recent_messages=2)
+    messages = _chat(0, 10)
+
+    result = asyncio.run(manager.prepare_async(messages, force=True))
+
+    assert sum(1 for m in result.messages if str(m.content).startswith("request")) == 1
+
+
+def test_message_count_limit_does_not_recompress_every_call():
+    # Stubbed tool results make messages cheap in tokens, so the message-count limit is what
+    # triggers compaction. It must compact well below that limit, or the next call is over it
+    # again and every call compacts (and breaks the prompt cache).
+    budget = ContextBudget(context_window=64_000, max_output_tokens=4_096)
+    manager = ContextWindowManager(budget, max_history_messages=100, keep_recent_tool_results=6)
+    messages: list[Message] = []
+    compressions = 0
+    for index in range(120):
+        messages.extend(_tool_turn(index, "x" * 300))
+        result = manager.prepare(messages)
+        compressions += result.compressed
+        messages = result.messages
+    assert len(messages) <= 100
+    assert compressions <= 12

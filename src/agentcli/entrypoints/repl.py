@@ -498,6 +498,7 @@ async def _handle_slash(
                 approval_callback=agent.approval_callback,
                 default_worker_mode=worker_mode,
                 tiers=ModelTiers(config, agent.llm_client),
+                worker_count=config.routing.team_workers,
             )
             await _run_events(
                 orchestrator.run(team_task),

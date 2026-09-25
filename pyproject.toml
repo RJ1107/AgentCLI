@@ -52,5 +52,9 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
+[tool.ruff.lint.per-file-ignores]
+# Experiment scripts set AGENTCLI_HOME before importing agentcli; fixtures hold long test data.
+"evals/*" = ["E402", "E501"]
+
 [tool.ruff.format]
 quote-style = "double"

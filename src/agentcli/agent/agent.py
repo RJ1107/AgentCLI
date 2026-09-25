@@ -279,6 +279,7 @@ class Agent:
             default_worker_mode="react",
             turn_snapshot=turn_snapshot,
             tiers=ModelTiers(self.config, self.llm_client),
+            worker_count=self.config.routing.team_workers,
         )
         async for event in orchestrator.run(message):
             if event.get("type") == "done":

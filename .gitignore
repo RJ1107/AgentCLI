@@ -12,3 +12,8 @@ build/
 !.agentcli/
 !.agentcli/config.example.json
 /.playwright-cli
+
+# Eval scratch
+evals/_runs/
+evals/_home/
+evals/_*.log

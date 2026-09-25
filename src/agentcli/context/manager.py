@@ -100,8 +100,10 @@ class ContextWindowManager:
         tool_result_max_chars: int = 4000,
         keep_recent_tool_results: int = 6,
         min_llm_summary_tokens: int = 2000,
+        strategy: str = "layered",
     ):
         self.budget = budget
+        self.strategy = strategy if strategy in {"layered", "summary", "truncate"} else "layered"
         self.max_history_messages = max(2, max_history_messages)
         self.min_recent_messages = max(2, min_recent_messages)
         self.summary_max_chars = max(256, summary_max_chars)
@@ -146,6 +148,8 @@ class ContextWindowManager:
         staged = self._stage(messages, system_prompt, tools, force=force)
         if isinstance(staged, CompressionResult):
             return staged
+        if self.strategy == "truncate" and not force:
+            return self._finish_truncated(staged, system_prompt, tools)
 
         body = ""
         method = "extractive"
@@ -184,12 +188,16 @@ class ContextWindowManager:
             return CompressionResult(list(messages), before, before, False)
 
         # Layer 1: clear old tool results, keep the conversation structure intact.
-        cleared, cleared_count = self._clear_old_tool_results(messages)
+        if self.strategy == "layered" or force:
+            cleared, cleared_count = self._clear_old_tool_results(messages)
+        else:
+            cleared, cleared_count = [_copy_message(message) for message in messages], 0
         after_clear = self._estimate_request(cleared, system_prompt, tools)
         if (
             not force
             and after_clear <= self.budget.compression_target_tokens
             and not over_message_limit
+            and cleared_count
         ):
             return CompressionResult(
                 cleared,
@@ -203,7 +211,24 @@ class ContextWindowManager:
         # Layer 2 input: split into older (to summarize) and recent (kept verbatim).
         previous_summary, start = _existing_summary(cleared)
         body = cleared[start:]
-        split_at = self._boundary(body, len(body) - self.min_recent_messages)
+        if force:
+            # /compact: the user asked for a summary, so keep only the last few messages.
+            split_at = self._boundary(body, len(body) - self.min_recent_messages)
+        else:
+            # Summarize only as much as it takes to get under the target, keeping every
+            # newer message verbatim. Compacting to the target, not just under the limit, is
+            # the hysteresis: the next compression is a while away, and fewer rounds of
+            # summarizing a summary means less is lost.
+            split_at = self._split_for_target(body, system_prompt, tools)
+            # The message count gets the same hysteresis. Stubbed tool results are cheap in
+            # tokens, so without this the kept part can sit right at max_history_messages and
+            # every following call would be over it again and compact a sliver.
+            keep = max(
+                self.min_recent_messages,
+                int(self.max_history_messages * self.budget.compression_target) - 2,
+            )
+            if len(body) - split_at > keep:
+                split_at = self._first_user_at_or_after(body, len(body) - keep, split_at)
         if over_message_limit:
             split_at = max(split_at, self._boundary(body, len(body) - self.max_history_messages))
         if split_at == 0 and len(body) > 1:
@@ -249,6 +274,22 @@ class ContextWindowManager:
             method=method,
         )
 
+    def _finish_truncated(
+        self, staged: _Split, system_prompt: str, tools: list[dict]
+    ) -> CompressionResult:
+        """Baseline: keep only the recent turns (and any earlier summary is dropped too)."""
+
+        kept = self._truncate_tool_payloads(staged.recent)
+        return CompressionResult(
+            kept,
+            staged.before,
+            self._estimate_request(kept, system_prompt, tools),
+            True,
+            summarized_messages=0,
+            cleared_tool_results=staged.cleared_tool_results,
+            method="truncate",
+        )
+
     def _clear_old_tool_results(self, messages: list[Message]) -> tuple[list[Message], int]:
         tool_indexes = [index for index, message in enumerate(messages) if message.role == "tool"]
         keep = self.keep_recent_tool_results
@@ -267,6 +308,42 @@ class ContextWindowManager:
                 cleared += 1
             result.append(clone)
         return result, cleared
+
+    def _split_for_target(self, body: list[Message], system_prompt: str, tools: list[dict]) -> int:
+        """Index splitting body into older (to summarize) and recent (kept) messages.
+
+        The recent part is as long as fits under the compression target after the system
+        prompt, the tools, and room for the summary, and never shorter than
+        min_recent_messages. It starts at a user message so no tool call loses its result.
+        """
+
+        room = (
+            self.budget.compression_target_tokens
+            - self._estimate_request([], system_prompt, tools)
+            - estimate_text_tokens("x" * self.summary_max_chars)
+        )
+        kept = 0
+        index = len(body)
+        while index > 0:
+            size = estimate_message_tokens(body[index - 1])
+            if kept + size > room and len(body) - index >= self.min_recent_messages:
+                break
+            kept += size
+            index -= 1
+        # Move forward to the next user message so the kept part stays under the target;
+        # when there is none (one long autonomous request), fall back to the usual boundary.
+        for candidate in range(index, len(body) - self.min_recent_messages + 1):
+            if body[candidate].role == "user":
+                return candidate
+        return self._boundary(body, index)
+
+    def _first_user_at_or_after(self, body: list[Message], index: int, fallback: int) -> int:
+        """The first user message at or after index that leaves min_recent_messages kept."""
+
+        for candidate in range(max(index, 0), len(body) - self.min_recent_messages + 1):
+            if body[candidate].role == "user":
+                return candidate
+        return max(fallback, self._boundary(body, index))
 
     def _boundary(self, messages: list[Message], candidate: int) -> int:
         """Pick a split index that never separates a tool call from its results.

@@ -64,6 +64,10 @@ class MemoryConfig:
     # Below this many older-turn tokens a model call costs more than it saves.
     min_llm_summary_tokens: int = 2_000
     keep_recent_tool_results: int = 6
+    # "layered": clear old tool results, then summarize, then truncate (default).
+    # "summary": summarize whenever over budget, without clearing tool results first.
+    # "truncate": drop the oldest turns, no summary. The last two exist to measure the first.
+    compression_strategy: str = "layered"
     # Idle reminder: after this long without a model call the provider's prompt cache has
     # probably expired (providers do not report it; Anthropic keeps 5 min or 1 h, DeepSeek's
     # disk cache usually hours), so the next message re-reads the whole context at full price.
@@ -138,6 +142,10 @@ class RoutingConfig:
     # Team mode: attempts per tier before moving the step up one tier, and how many times.
     attempts_per_tier: int = 2
     max_escalations: int = 1
+    # Team mode: how many workers run steps in parallel. 4 by measurement (evals/README.md):
+    # on six-step tasks it cut wall time 57% against one worker at the same cost; 6 added
+    # little more.
+    team_workers: int = 4
 
 
 @dataclass(slots=True)

@@ -67,6 +67,7 @@ async def query(
 
     total_usage = Usage()
     turn = 0
+    output_recoveries = 0
 
     while turn < max_turns:
         turn += 1
@@ -129,14 +130,28 @@ async def query(
 
         total_usage = total_usage + turn_usage
         tool_calls = _finalize_tool_calls(tool_states)
+        cut_off_note = ""
+        if stop_reason == "max_tokens" and output_recoveries < MAX_OUTPUT_RECOVERIES:
+            # The response hit the output limit. Ending here would look like a finished
+            # answer; instead run the tool calls that arrived whole, drop the one cut off
+            # mid-arguments (it would write half a file), and ask for smaller steps.
+            output_recoveries += 1
+            complete = [call for call in tool_calls if _arguments_complete(call)]
+            dropped = len(tool_calls) - len(complete)
+            tool_calls = complete
+            cut_off_note = _cut_off_note(config.llm.max_tokens, dropped)
         assistant_message = Message(role="assistant", content=text, tool_calls=tool_calls)
         if thinking and text:
             assistant_message.content = text
         elif thinking:
             assistant_message.content = ""
-        messages.append(assistant_message)
+        if text or tool_calls or not cut_off_note:
+            messages.append(assistant_message)
         yield {"type": "turn_complete", "turn": turn, "stop_reason": stop_reason}
 
+        if cut_off_note and not tool_calls:
+            messages.append(Message(role="user", content=cut_off_note))
+            continue
         if stop_reason != "tool_use" and not tool_calls:
             break
 
@@ -171,6 +186,8 @@ async def query(
                     tool_call_id=result.tool_use_id,
                 )
             )
+        if cut_off_note:
+            messages.append(Message(role="user", content=cut_off_note))
         if loaded_skill_context and not injected:
             messages.append(
                 Message(
@@ -211,6 +228,7 @@ def build_context_manager(llm_client: LlmClient, config: AgentCliConfig) -> Cont
         summary_max_chars=config.memory.summary_max_chars,
         keep_recent_tool_results=config.memory.keep_recent_tool_results,
         min_llm_summary_tokens=config.memory.min_llm_summary_tokens,
+        strategy=config.memory.compression_strategy,
     )
 
 
@@ -231,6 +249,29 @@ def _merge_tool_delta(tool_states: dict[int, dict[str, Any]], delta: dict[str, A
         state["function"]["name"] = function["name"]
     if function.get("arguments"):
         state["function"]["arguments"] += function["arguments"]
+
+
+MAX_OUTPUT_RECOVERIES = 3
+
+
+def _arguments_complete(call: dict[str, Any]) -> bool:
+    try:
+        return isinstance(json.loads(call.get("function", {}).get("arguments") or "{}"), dict)
+    except json.JSONDecodeError:
+        return False
+
+
+def _cut_off_note(max_tokens: int, dropped: int) -> str:
+    dropped_text = (
+        f" The last {dropped} tool call(s) were cut off mid-arguments and were not run."
+        if dropped
+        else ""
+    )
+    return (
+        f"[Your previous response reached the output limit of {max_tokens} tokens and was "
+        f"cut off.{dropped_text} Continue from where you stopped, in smaller steps: keep "
+        "reasoning brief and write one file per tool call.]"
+    )
 
 
 def _finalize_tool_calls(tool_states: dict[int, dict[str, Any]]) -> list[dict[str, Any]]:
