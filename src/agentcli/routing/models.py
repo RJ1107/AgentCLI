@@ -78,42 +78,51 @@ class ModelTiers:
     def _client(self, spec: str) -> LlmClient:
         if not spec.strip():
             return self.session_client
-        if spec in self._clients:
-            return self._clients[spec]
-        from agentcli.llm.factory import create_llm_client
-        from agentcli.llm.model_profiles import PROVIDER_API_KEY_ENVS
+        if spec not in self._clients:
+            client, warning = client_for_spec(self.config, self.session_client, spec)
+            if warning:
+                self.warnings.append(warning)
+            self._clients[spec] = client
+        return self._clients[spec]
 
-        session = self.config.llm
-        provider, model = parse_model_spec(spec, session.provider.lower())
-        if provider == session.provider.lower():
-            api_key = session.api_key
-            base_url = session.base_url
-        else:
-            api_key = next(
-                (
-                    os.environ[name]
-                    for name in PROVIDER_API_KEY_ENVS.get(provider, ())
-                    if os.environ.get(name)
-                ),
-                "",
-            )
-            base_url = None
-        if not api_key:
-            self.warnings.append(
-                f"no API key for {provider}; {spec} falls back to the session model"
-            )
-            self._clients[spec] = self.session_client
-            return self.session_client
-        client = create_llm_client(
-            replace(
-                session,
-                provider=provider,
-                model=model,
-                api_key=api_key,
-                base_url=base_url,
-                context_window=None,
-                prices={},
-            )
+
+def client_for_spec(
+    config: AgentCliConfig, session_client: LlmClient, spec: str, **llm_overrides
+) -> tuple[LlmClient, str]:
+    """A client for "provider:model", or the session client and a warning when its provider
+    has no API key. llm_overrides adjust the copy of the session's LLM settings (max_tokens)."""
+
+    from agentcli.llm.factory import create_llm_client
+    from agentcli.llm.model_profiles import PROVIDER_API_KEY_ENVS
+
+    session = config.llm
+    provider, model = parse_model_spec(spec, session.provider.lower())
+    if provider == session.provider.lower():
+        if model == session_client.model_name and not llm_overrides:
+            return session_client, ""
+        api_key, base_url = session.api_key, session.base_url
+    else:
+        api_key = next(
+            (
+                os.environ[name]
+                for name in PROVIDER_API_KEY_ENVS.get(provider, ())
+                if os.environ.get(name)
+            ),
+            "",
         )
-        self._clients[spec] = client
-        return client
+        base_url = None
+    if not api_key:
+        return session_client, f"no API key for {provider}; {spec} falls back to the session model"
+    client = create_llm_client(
+        replace(
+            session,
+            provider=provider,
+            model=model,
+            api_key=api_key,
+            base_url=base_url,
+            context_window=None,
+            prices={},
+            **llm_overrides,
+        )
+    )
+    return client, ""

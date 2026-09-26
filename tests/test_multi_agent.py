@@ -163,7 +163,7 @@ def test_reviewer_rejection_after_retry_marks_step_failed(tmp_path, monkeypatch)
 class FakeTeamClient:
     model_name = "fake-model"
     provider_name = "fake-provider"
-    max_context_window = 1000
+    max_context_window = 200_000
 
     async def chat(self, messages, tools, *, system_prompt):  # noqa: ARG002
         yield {"type": "text_delta", "text": "{}"}

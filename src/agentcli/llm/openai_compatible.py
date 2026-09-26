@@ -89,8 +89,17 @@ class OpenAICompatibleClient:
                         # Rate limits and overloaded upstreams answer before any output, so
                         # nothing has been shown yet and the same request can simply go again.
                         retry_after = _retry_delay(response, attempt)
+                    elif response.status_code >= 400:
+                        detail = (await response.aread()).decode("utf-8", errors="replace")
+                        yield {
+                            "type": "error",
+                            "error": RuntimeError(
+                                f"{self.provider_name} API returned HTTP "
+                                f"{response.status_code}: {_error_message(detail)}"
+                            ),
+                            "context_overflow": _is_context_overflow(detail),
+                        }
                     else:
-                        response.raise_for_status()
                         async for event in _iter_sse(response):
                             if event == "[DONE]":
                                 break
@@ -278,6 +287,36 @@ def _readable_reasoning(details: Any) -> str:
 
 
 _RETRYABLE = {429, 500, 502, 503, 504}
+_OVERFLOW_HINTS = (
+    "context_length_exceeded",
+    "maximum context length",
+    "context length",
+    "context window",
+    "too many tokens",
+    "prompt is too long",
+    "input is too long",
+)
+
+
+def _error_message(body: str) -> str:
+    """The provider's own error message when it sent JSON, else the start of the body."""
+
+    try:
+        data = json.loads(body)
+        error = data.get("error", data) if isinstance(data, dict) else data
+        message = error.get("message") if isinstance(error, dict) else str(error)
+        if message:
+            return str(message)[:300]
+    except (json.JSONDecodeError, AttributeError):
+        pass
+    return body.strip()[:300] or "no details"
+
+
+def _is_context_overflow(body: str) -> bool:
+    lowered = body.lower()
+    return any(hint in lowered for hint in _OVERFLOW_HINTS)
+
+
 _MAX_ATTEMPTS = 4
 
 

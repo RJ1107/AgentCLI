@@ -179,13 +179,18 @@ AgentCLI uses three memory layers:
 
 The system prompt is fully static for a session. Per-request context (date, working directory, recalled memories, skill candidates) is attached to the user message that triggered it and then stays frozen in history, so the prefix cache covers the system prompt, tool definitions, and all earlier turns.
 
-When the estimated input reaches `memory.compression_threshold` of the budget, compression runs in layers and stops as soon as the request fits under `memory.compression_target`:
+Compaction works inside a workspace W = min(80% of what the model's window leaves for input, `memory.workspace_tokens`), 200k by default: a 1M-token model still compacts around 200k, because past that every call re-reads far more than it uses, costs more even at cached prices, answers later, and attends worse. With W = 200k:
 
-1. Old tool results beyond the newest `memory.keep_recent_tool_results` are replaced with short stubs.
-2. Older turns are folded into one rolling summary, written by `memory.summary_model` (empty means the session model) when the older part exceeds `memory.min_llm_summary_tokens`; otherwise, or on failure, an extractive summary is used. Set `memory.llm_summary` to `false` to never call a model.
-3. Oversized tool payloads in the retained turns are truncated.
+| Layer | When | What |
+| --- | --- | --- |
+| Protected | always | The newest 20% of W (40k tokens), and at least the latest message, is never touched. |
+| 1. Clear | at 50% of W, if clearing brings it to 40% or less | Tool results older than the protected part become one-line stubs. No model call. The full text is saved under `<AGENTCLI_HOME>/sessions/` for 7 days, and the stub says where (or, for file reads and searches, to run them again). |
+| 2. Summarize | at 80% of W | Everything older than the protected part, with the previous summary, is folded into one rolling summary by `memory.summary_model` (GPT-6 Luna via OpenRouter by default; the session model when that key is missing). An extractive summary is the fallback. |
+| 3. Backstop | as needed | A new tool result over half the protected size is cut to its head and tail before the model sees it (full copy saved); the summary is shortened if still over; a provider "context too long" error triggers a forced compaction and one retry. |
 
-Recent turns and complete tool-call/result pairs are always kept verbatim. The summary is session state and is never written to long-term memory.
+Each rewrite of the history makes the provider re-read everything after the first changed message at full price, so both layers wait until they free a lot at once, and each leaves the next one far away. The thresholds are `memory.workspace_tokens`, `protect_ratio`, `clear_ratio`, `clear_min_ratio`, and `compression_threshold`. `evals/README.md` has the measurements behind them.
+
+`/compact [focus]` summarizes on demand, whatever the size, keeping the last few messages and the focus in most detail. The summary is session state and is never written to long-term memory.
 
 Providers keep the prompt cache only for a while and do not report when it expires. When you come back after `memory.cache_ttl_minutes` (default 60) with a context of at least `memory.idle_reminder_min_tokens` (default 30,000), the REPL says so before sending, with the extra cost when the model has prices. You can send anyway, compact first, or cancel. After `memory.stale_session_hours` (default 8) it suggests compacting first.
 

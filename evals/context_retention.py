@@ -39,13 +39,13 @@ from harness import (  # noqa: E402
 )
 
 CORPUS = Path(__file__).resolve().parents[1] / "src" / "agentcli"
-EXPERIMENT = "context_retention_v3"
+EXPERIMENT = "context_retention_v4"
 
 STRATEGIES = {
     "truncate": {"memory": {"compression_strategy": "truncate"}},
     "summary": {"memory": {"compression_strategy": "summary"}},
-    "layered_nohyst": {"memory": {"compression_strategy": "layered", "compression_target": 0.78}},
-    "layered": {"memory": {"compression_strategy": "layered", "compression_target": 0.55}},
+    "layered": {"memory": {"compression_strategy": "layered"}},
+    "layered_clear30": {"memory": {"compression_strategy": "layered", "clear_ratio": 0.3}},
 }
 
 # id -> (statement, question, keywords that must all appear in a correct answer)

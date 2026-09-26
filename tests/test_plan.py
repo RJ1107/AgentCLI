@@ -118,7 +118,7 @@ def test_plan_execute_runs_independent_tasks_in_parallel(tmp_path, monkeypatch):
 class FakeClient:
     model_name = "fake-model"
     provider_name = "fake-provider"
-    max_context_window = 1000
+    max_context_window = 200_000
 
     async def chat(self, messages, tools, *, system_prompt):  # noqa: ARG002
         yield {"type": "text_delta", "text": "{}"}

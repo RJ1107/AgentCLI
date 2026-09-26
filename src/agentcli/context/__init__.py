@@ -1,3 +1,4 @@
+from agentcli.context import spill
 from agentcli.context.manager import (
     CompressionResult,
     ContextBudget,
@@ -19,4 +20,5 @@ __all__ = [
     "estimate_message_tokens",
     "estimate_request_tokens",
     "estimate_text_tokens",
+    "spill",
 ]

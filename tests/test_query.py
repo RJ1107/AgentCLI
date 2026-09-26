@@ -13,7 +13,7 @@ from agentcli.types import Message
 class FakeClient:
     model_name = "fake-model"
     provider_name = "fake-provider"
-    max_context_window = 1000
+    max_context_window = 200_000
 
     def __init__(self):
         self.calls = 0
@@ -41,7 +41,7 @@ class FakeClient:
 class SkillLoadingClient:
     model_name = "fake-model"
     provider_name = "fake-provider"
-    max_context_window = 1000
+    max_context_window = 200_000
 
     def __init__(self):
         self.calls = 0

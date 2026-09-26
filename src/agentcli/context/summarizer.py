@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from agentcli.types import Message, Usage
@@ -41,7 +40,7 @@ class LlmSummarizer:
         self,
         client: LlmClient,
         *,
-        max_input_chars: int = 120_000,
+        max_input_chars: int = 400_000,
         per_message_chars: int = 2_000,
         max_summary_chars: int = 6_000,
     ):
@@ -106,16 +105,17 @@ class LlmSummarizer:
 
 
 def build_summarizer(llm_client: LlmClient, config: AgentCliConfig) -> LlmSummarizer | None:
-    """Use a dedicated cheaper model when configured, otherwise the session model."""
+    """The configured summary model ("provider:model"), or the session model when that
+    provider has no key or none is configured."""
 
     if not config.memory.llm_summary:
         return None
     client = llm_client
-    model = config.memory.summary_model.strip()
-    if model and model != llm_client.model_name:
-        from agentcli.llm.factory import create_llm_client
+    spec = config.memory.summary_model.strip()
+    if spec:
+        from agentcli.routing.models import client_for_spec
 
-        client = create_llm_client(
-            replace(config.llm, model=model, max_tokens=config.memory.summary_max_tokens)
+        client, _warning = client_for_spec(
+            config, llm_client, spec, max_tokens=config.memory.summary_max_tokens
         )
     return LlmSummarizer(client, max_summary_chars=config.memory.summary_max_chars)

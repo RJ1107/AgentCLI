@@ -6,6 +6,7 @@ from typing import Any
 
 from agentcli.config import AgentCliConfig
 from agentcli.context import ContextBudget, ContextWindowManager, build_summarizer
+from agentcli.context.spill import ToolResultStore
 from agentcli.image import parse_image_references
 from agentcli.llm.base import LlmClient
 from agentcli.prompt import PromptAssembler
@@ -68,6 +69,7 @@ async def query(
     total_usage = Usage()
     turn = 0
     output_recoveries = 0
+    overflow_retried = False
 
     while turn < max_turns:
         turn += 1
@@ -102,11 +104,9 @@ async def query(
                     "method": compression.method,
                 }
 
-        async for event in llm_client.chat(
-            messages,
-            tool_definitions,
-            system_prompt=system_prompt,
-        ):
+        overflowed = False
+        stream = llm_client.chat(messages, tool_definitions, system_prompt=system_prompt)
+        async for event in stream:
             event_type = event.get("type")
             if event_type == "text_delta":
                 delta = str(event.get("text") or "")
@@ -125,8 +125,34 @@ async def query(
                 turn_usage = turn_usage + usage
                 yield {"type": "usage", "usage": usage.to_dict()}
             elif event_type == "error":
+                if event.get("context_overflow") and not overflow_retried:
+                    overflowed = True
+                    break
                 yield {"type": "error", "error": event["error"]}
                 return
+        if overflowed:
+            await stream.aclose()
+            overflow_retried = True
+            # The provider refused the request as too long for its window (our estimate
+            # was off, or the window smaller than configured). Compact hard, then retry once.
+            result = await context_manager.prepare_async(
+                messages,
+                system_prompt=system_prompt,
+                tool_definitions=tool_definitions,
+                summarizer=summarizer,
+                force=True,
+            )
+            messages = result.messages
+            yield {
+                "type": "context_compressed",
+                "before_tokens": result.estimated_tokens_before,
+                "after_tokens": result.estimated_tokens_after,
+                "summarized_messages": result.summarized_messages,
+                "cleared_tool_results": result.cleared_tool_results,
+                "method": result.method,
+            }
+            turn -= 1
+            continue
 
         total_usage = total_usage + turn_usage
         tool_calls = _finalize_tool_calls(tool_states)
@@ -215,20 +241,23 @@ async def query(
 def build_context_manager(llm_client: LlmClient, config: AgentCliConfig) -> ContextWindowManager:
     """The context manager for a model and config; shared by the loop and /compact."""
 
+    memory = config.memory
     return ContextWindowManager(
         ContextBudget(
             context_window=llm_client.max_context_window,
             max_output_tokens=config.llm.max_tokens,
-            compression_threshold=config.memory.compression_threshold,
-            compression_target=config.memory.compression_target,
-            reserve_tokens=config.memory.compression_reserve_tokens,
+            workspace_tokens=memory.workspace_tokens,
+            protect_ratio=memory.protect_ratio,
+            clear_ratio=memory.clear_ratio,
+            clear_min_ratio=memory.clear_min_ratio,
+            summarize_ratio=memory.compression_threshold,
+            reserve_tokens=memory.compression_reserve_tokens,
         ),
-        max_history_messages=config.memory.max_conversation_history,
-        min_recent_messages=config.memory.min_recent_messages,
-        summary_max_chars=config.memory.summary_max_chars,
-        keep_recent_tool_results=config.memory.keep_recent_tool_results,
-        min_llm_summary_tokens=config.memory.min_llm_summary_tokens,
-        strategy=config.memory.compression_strategy,
+        max_history_messages=memory.max_conversation_history,
+        summary_max_chars=memory.summary_max_chars,
+        min_llm_summary_tokens=memory.min_llm_summary_tokens,
+        strategy=memory.compression_strategy,
+        store=ToolResultStore(retention_days=memory.tool_result_retention_days),
     )
 
 

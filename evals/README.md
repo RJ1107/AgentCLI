@@ -42,7 +42,11 @@ Strategies (all else equal):
 - `summary`: summarize older turns whenever over budget.
 - `layered_nohyst`: clear old tool results first, then summarize; compact only to just under
   the trigger (78% against the 80% trigger).
-- `layered`: the default; clear old tool results first, then summarize, compacting to 55%.
+- `layered`: clear old tool results first, then summarize (the default).
+- `layered_clear30`: the current design with the first layer at 30% instead of 50%.
+
+The first design had `layered_nohyst` (compact only to just under the trigger) instead of
+`layered_clear30`; its results are kept below.
 
 ## Experiment 2: how many parallel workers
 
@@ -63,12 +67,33 @@ All with GPT-6 Luna unless a model is named; about $8 of OpenRouter usage in tot
 
 ### Experiment 1: compression
 
+**Current design** (workspace, protected 20%, clear at 50%, summarize at 80%; see the main
+README), 3 runs each:
+
+| strategy | facts kept | LLM summaries | cached input | cost/run |
+|---|---|---|---|---|
+| truncate | 1.3/30 | 0 | 91.5% | $0.056 |
+| summary | 29.7/30 | 9.7 | 87.6% | $0.069 |
+| **layered (default)** | **29.7/30** | **2.0** (+ ~20 tool-result clears) | 82.7% | **$0.066** |
+| layered, clear at 30% | 30/30 | 8.7 | 88.5% | $0.067 |
+
+- Layered keeps as much as summarizing every time, with about 80% fewer model summaries;
+  most compactions only clear tool results. Total cost is about the same (4% lower): the
+  clears cost some cache hits.
+- Clearing at 30% never happens: with 20% of the workspace protected, clearing cannot bring
+  the request below 20%, so that setting behaves like plain summarizing.
+- The 64k window makes each file read about 8% of the workspace, four times its share in a
+  200k workspace, so clears here are more frequent than in normal use.
+
+**Previous design** (80% of the model's input window, compact to 55%), run to measure
+hysteresis; the rows below are from that version:
+
 | strategy | runs | facts kept | LLM summaries | cached input | cost/run |
 |---|---|---|---|---|---|
 | truncate | 2 | 6.0/30 | 0 | 92.8% | $0.057 |
 | summary | 3 | 30/30 | 7.0 | 90.6% | $0.072 |
 | layered, no hysteresis | 3 | 17.3/30 | 2.0 (+ ~7 extractive) | 89.9% | $0.063 |
-| **layered (default)** | 3 | **30/30** | 5.3 | 89.6% | $0.075 |
+| layered (compact to 55%) | 3 | 30/30 | 5.3 | 89.6% | $0.075 |
 
 - Dropping old turns loses most of what the user said (20% kept).
 - Hysteresis is what keeps the layered strategy lossless: compacting only to just under the

@@ -356,8 +356,22 @@ def get_builtin_tools() -> list[Tool]:
 # ---------------------------------------------------------------------------
 
 
+def _in_saved_results(path: str) -> bool:
+    from agentcli.context.spill import saved_results_root
+
+    try:
+        Path(path).resolve().relative_to(saved_results_root().resolve())
+    except (ValueError, OSError):
+        return False
+    return True
+
+
 async def _read_file(payload: dict[str, Any], context: ToolContext) -> ToolResult:
-    in_skill = _in_skill_folder(context, str(payload["path"]))
+    # Skill folders and the saved copies of cleared tool results live outside the
+    # workspace; reading them is allowed, writing is not.
+    in_skill = _in_skill_folder(context, str(payload["path"])) or _in_saved_results(
+        str(payload["path"])
+    )
     result: FileOpResult = fops.read_file(
         context.cwd,
         str(payload["path"]),
@@ -524,7 +538,14 @@ async def _bash(payload: dict[str, Any], context: ToolContext) -> ToolResult:
         return ToolResult(f"Command timed out after {timeout:.0f}s", is_error=True)
     output = (stdout + stderr).decode("utf-8", errors="replace")
     if len(output) > 20_000:
-        output = output[:20_000] + "\n... [truncated]"
+        # Keep the start (what ran, the first error) and the end (the final result and any
+        # summary line, such as pytest's) instead of only the start.
+        omitted = len(output) - 20_000
+        output = (
+            output[:12_000]
+            + f"\n... [{omitted:,} characters omitted from the middle] ...\n"
+            + output[-8_000:]
+        )
     return ToolResult(
         output or f"(exit {proc.returncode}, no output)",
         is_error=proc.returncode != 0,

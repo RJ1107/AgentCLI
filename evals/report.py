@@ -59,7 +59,7 @@ def context_report(name: str) -> None:
     for row in rows:
         groups[row["strategy"]].append(row)
     out = []
-    for strategy in ("truncate", "summary", "layered_nohyst", "layered"):
+    for strategy in ("truncate", "summary", "layered_nohyst", "layered", "layered_clear30"):
         runs = groups.get(strategy)
         if not runs:
             continue
@@ -151,6 +151,7 @@ if __name__ == "__main__":
     context_report("context_retention")
     context_report("context_retention_v2")
     context_report("context_retention_v3")
+    context_report("context_retention_v4")
     coding_report("workers", "workers")
     coding_report("models", "model")
     coding_report("models_fixed", "model")

@@ -4,7 +4,7 @@ import json
 import os
 from contextlib import suppress
 from copy import deepcopy
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
@@ -43,7 +43,8 @@ class McpConfig:
 
 @dataclass(slots=True)
 class MemoryConfig:
-    max_conversation_history: int = 100
+    # A safety valve only; the token thresholds below are what normally trigger compaction.
+    max_conversation_history: int = 500
     long_term_enabled: bool = True
     long_term_db_path: str = ""  # empty: <AGENTCLI_HOME>/memory.db
     max_long_term_entries: int = 1_000
@@ -51,22 +52,31 @@ class MemoryConfig:
     recall_limit: int = 6
     recall_min_score: float = 0.05
     token_budget_mode: str = "balanced"
+    # Context compaction works inside a workspace W = min(80% of the model's input window,
+    # workspace_tokens), so a 1M-token model still compacts around 200k (see ContextBudget).
+    workspace_tokens: int = 200_000
+    # The newest protect_ratio of W is never cleared or summarized.
+    protect_ratio: float = 0.2
+    # Layer 1 at clear_ratio of W: clear tool results older than the protected part, when
+    # they add up to at least clear_min_ratio of W. No model call.
+    clear_ratio: float = 0.5
+    clear_min_ratio: float = 0.1
+    # Layer 2 at compression_threshold of W: summarize everything older than the protected part.
     compression_threshold: float = 0.8
-    compression_target: float = 0.55
     compression_reserve_tokens: int = 1_024
-    min_recent_messages: int = 6
+    # Cleared tool results are saved under <AGENTCLI_HOME>/sessions and deleted after this.
+    tool_result_retention_days: float = 7.0
     summary_max_chars: int = 6_000
     # Summarize older turns with a model; the extractive summary remains the fallback.
     llm_summary: bool = True
-    # Empty means the session model. Set a cheaper model of the same provider to save cost.
-    summary_model: str = ""
+    # "provider:model", or a model on the session's provider. Used when its provider's key is
+    # set, otherwise the session model is.
+    summary_model: str = "openrouter:openai/gpt-6-luna"
     summary_max_tokens: int = 2_048
     # Below this many older-turn tokens a model call costs more than it saves.
     min_llm_summary_tokens: int = 2_000
-    keep_recent_tool_results: int = 6
-    # "layered": clear old tool results, then summarize, then truncate (default).
-    # "summary": summarize whenever over budget, without clearing tool results first.
-    # "truncate": drop the oldest turns, no summary. The last two exist to measure the first.
+    # "layered" (default), "summary" (no layer 1), or "truncate" (drop, do not summarize).
+    # The last two exist to measure the first.
     compression_strategy: str = "layered"
     # Idle reminder: after this long without a model call the provider's prompt cache has
     # probably expired (providers do not report it; Anthropic keeps 5 min or 1 h, DeepSeek's
@@ -334,16 +344,23 @@ def _config_to_dict(config: AgentCliConfig) -> dict[str, Any]:
 
 def _dict_to_config(data: dict[str, Any]) -> AgentCliConfig:
     return AgentCliConfig(
-        llm=LlmConfig(**data.get("llm", {})),
+        llm=_section(LlmConfig, data.get("llm")),
         render_mode=data.get("render_mode", "inline"),
-        tools=ToolsConfig(**data.get("tools", {})),
-        mcp=McpConfig(**data.get("mcp", {})),
-        memory=MemoryConfig(**data.get("memory", {})),
-        policy=PolicyConfig(**data.get("policy", {})),
-        prompt=PromptConfig(**data.get("prompt", {})),
-        features=FeatureConfig(**data.get("features", {})),
-        routing=RoutingConfig(**data.get("routing", {})),
+        tools=_section(ToolsConfig, data.get("tools")),
+        mcp=_section(McpConfig, data.get("mcp")),
+        memory=_section(MemoryConfig, data.get("memory")),
+        policy=_section(PolicyConfig, data.get("policy")),
+        prompt=_section(PromptConfig, data.get("prompt")),
+        features=_section(FeatureConfig, data.get("features")),
+        routing=_section(RoutingConfig, data.get("routing")),
     )
+
+
+def _section(cls, values: dict[str, Any] | None):
+    """Build one config section, ignoring keys it no longer has (old config files)."""
+
+    known = {f.name for f in fields(cls)}
+    return cls(**{k: v for k, v in (values or {}).items() if k in known})
 
 
 def _expand_home(path: str) -> str:

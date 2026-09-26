@@ -16,3 +16,10 @@ def _isolated_home(tmp_path_factory, monkeypatch):
     monkeypatch.setenv("USERPROFILE", str(home))
     # The real AGENTCLI_HOME (say D:\agentcli-data) must never see test data either.
     monkeypatch.delenv("AGENTCLI_HOME", raising=False)
+    # No test may reach a real provider, spend money, or depend on the developer's keys:
+    # with a key present, the default summary model (Luna via OpenRouter) would be called.
+    import os
+
+    for name in list(os.environ):
+        if name.endswith("_API_KEY") or name in {"AGENTCLI_PROVIDER", "AGENTCLI_MODEL"}:
+            monkeypatch.delenv(name, raising=False)
