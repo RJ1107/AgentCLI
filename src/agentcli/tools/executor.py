@@ -91,7 +91,7 @@ class ToolExecutor:
                     content=f'Tool "{tool.name}" was {decision}ed by approval policy.',
                     is_error=True,
                 )
-            if tool.requires_approval or context.config.policy.hitl_mode == "always":
+            if tool.needs_approval(data, context) or context.config.policy.hitl_mode == "always":
                 approver = "hitl"
 
             # Only now is it certain that a write will run: it is not read-only and it passed
@@ -134,7 +134,7 @@ class ToolExecutor:
         mode = context.config.policy.hitl_mode
         if mode == "never":
             return "approve"
-        if mode == "auto" and not tool.requires_approval:
+        if mode == "auto" and not tool.needs_approval(payload, context):
             return "approve"
         if not context.approval_callback:
             return "deny"

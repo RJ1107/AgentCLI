@@ -183,11 +183,26 @@ def get_builtin_tools() -> list[Tool]:
                 {
                     "command": {"type": "string", "description": "Shell command"},
                     "timeout": {"type": "number", "description": "Timeout seconds"},
+                    "network": {
+                        "type": "boolean",
+                        "description": (
+                            "Sandbox only: true if the command needs the internet (pip "
+                            "install, git fetch). Runs with network after the user approves."
+                        ),
+                    },
+                    "sandbox": {
+                        "type": "boolean",
+                        "description": (
+                            "Sandbox only: false to run on the user's machine instead, when "
+                            "the command needs tools that only exist there. Needs approval."
+                        ),
+                    },
                 },
                 ["command"],
             ),
             required_keys=["command"],
             handler=_bash,
+            approval_check=_bash_needs_approval,
             is_read_only=False,
             is_concurrency_safe=False,
             danger_level="high",
@@ -540,11 +555,31 @@ async def _get_file_info(payload: dict[str, Any], context: ToolContext) -> ToolR
 # ---------------------------------------------------------------------------
 
 
+def _bash_needs_approval(payload: dict[str, Any], context: ToolContext) -> bool:
+    """Inside the sandbox a command can only touch the project (and snapshots cover that),
+    so it runs without asking; the network, or the host, still needs a yes."""
+
+    from agentcli.sandbox import sandbox_for
+
+    if sandbox_for(context.cwd, context.config) is None:
+        return True
+    return bool(payload.get("network")) or payload.get("sandbox") is False
+
+
 async def _bash(payload: dict[str, Any], context: ToolContext) -> ToolResult:
+    from agentcli.sandbox import sandbox_for
+
     command = str(payload["command"])
     if context.config.policy.command_guard_enabled:
         CommandGuard(context.config.policy.command_blacklist).validate(command)
     timeout = float(payload.get("timeout") or context.config.tools.timeout)
+    sandbox = sandbox_for(context.cwd, context.config)
+    if sandbox is not None and payload.get("sandbox") is not False:
+        code, output = await sandbox.run(command, timeout, network=bool(payload.get("network")))
+        return ToolResult(
+            _clip_output(output) or f"(exit {code}, no output)",
+            is_error=code != 0,
+        )
     proc = await asyncio.create_subprocess_shell(
         command,
         cwd=context.cwd,
@@ -558,19 +593,24 @@ async def _bash(payload: dict[str, Any], context: ToolContext) -> ToolResult:
         proc.kill()
         await proc.wait()
         return ToolResult(f"Command timed out after {timeout:.0f}s", is_error=True)
-    output = (stdout + stderr).decode("utf-8", errors="replace")
-    if len(output) > 20_000:
-        # Keep the start (what ran, the first error) and the end (the final result and any
-        # summary line, such as pytest's) instead of only the start.
-        omitted = len(output) - 20_000
-        output = (
-            output[:12_000]
-            + f"\n... [{omitted:,} characters omitted from the middle] ...\n"
-            + output[-8_000:]
-        )
+    output = _clip_output((stdout + stderr).decode("utf-8", errors="replace"))
     return ToolResult(
         output or f"(exit {proc.returncode}, no output)",
         is_error=proc.returncode != 0,
+    )
+
+
+def _clip_output(output: str) -> str:
+    """Keep the start (what ran, the first error) and the end (the final result and any
+    summary line, such as pytest's) when output is long."""
+
+    if len(output) <= 20_000:
+        return output
+    omitted = len(output) - 20_000
+    return (
+        output[:12_000]
+        + f"\n... [{omitted:,} characters omitted from the middle] ...\n"
+        + output[-8_000:]
     )
 
 

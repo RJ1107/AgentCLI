@@ -23,3 +23,5 @@ def _isolated_home(tmp_path_factory, monkeypatch):
     for name in list(os.environ):
         if name.endswith("_API_KEY") or name in {"AGENTCLI_PROVIDER", "AGENTCLI_MODEL"}:
             monkeypatch.delenv(name, raising=False)
+    # Commands run on the host in tests; the sandbox has tests of its own.
+    monkeypatch.setenv("AGENTCLI_SANDBOX", "off")

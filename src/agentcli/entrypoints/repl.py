@@ -41,6 +41,9 @@ from agentcli.rag import CodeIndex
 from agentcli.render import RichRenderer
 from agentcli.routing import IntentRouter, ModelTiers, RouteDecision
 from agentcli.runtime import DurableTaskManager
+from agentcli.sandbox import close_all as close_sandboxes
+from agentcli.sandbox import prepare_image, sandbox_status
+from agentcli.sandbox.docker import docker_available
 from agentcli.session import Session, SessionStore
 from agentcli.skill import SkillRegistry
 from agentcli.snapshot import SnapshotService
@@ -77,6 +80,7 @@ COMMAND_HELP: list[tuple[str, str, str]] = [
         "审批模式：default 需要审批，auto 全部放行（也可按 Shift+Tab）",
     ),
     ("/policy", "/policy", "查看当前安全策略"),
+    ("/sandbox", "/sandbox", "查看命令在哪里执行：Docker 沙箱还是本机"),
     ("/audit", "/audit [N]", "查看最近 N 条审计日志"),
     ("/snapshot", "/snapshot [clean]", "列出（或清空）工作区快照"),
     ("/restore", "/restore <编号或 id>", "把工作区恢复到某个快照"),
@@ -322,6 +326,7 @@ def _last_answer(history: list[Message]) -> str:
 
 async def start_repl(cwd: str, config: AgentCliConfig, resume: str | None = None) -> None:
     console = Console()
+    _prepare_sandbox(config, console)
     permission_mode = PermissionModeController(config)
     registry, mcp_manager = await build_tool_registry(config=config, cwd=cwd)
     client = create_llm_client(config.llm)
@@ -462,6 +467,22 @@ async def start_repl(cwd: str, config: AgentCliConfig, resume: str | None = None
         # tool calls); stop them, and the browsers they launched, on the way out.
         if mcp_manager:
             await mcp_manager.aclose()
+        await close_sandboxes()
+
+
+def _prepare_sandbox(config: AgentCliConfig, console: Console) -> None:
+    """Build the sandbox image the first time (a one-off download), then say where commands
+    will run, before the banner, so the tool descriptions built next match it."""
+
+    if config.sandbox.mode == "docker" and docker_available():
+        ready, _ = sandbox_status(config)
+        if not ready:
+            with console.status("首次使用沙箱：正在构建 Docker 镜像（约 1~2 分钟，只需一次）……"):
+                ok, log = prepare_image(config)
+            if not ok:
+                console.print(f"[red]沙箱镜像构建失败[/red]，命令将在本机执行并逐条审批。\n{log}")
+    active, message = sandbox_status(config)
+    console.print(f"[{'green' if active else 'yellow'}]{message}[/]")
 
 
 async def _run_agent(agent: Agent, renderer: RichRenderer, message: str) -> None:
@@ -534,6 +555,15 @@ async def _handle_slash(
     elif command == "/sessions":
         if chat:
             _sessions_command(arg, console, chat)
+    elif command == "/sandbox":
+        active, message = sandbox_status(config)
+        console.print(f"[{'green' if active else 'yellow'}]{message}[/]")
+        if active:
+            console.print(
+                f"[dim]镜像 {config.sandbox.image} · 内存 {config.sandbox.memory} · "
+                f"CPU {config.sandbox.cpus:g} · 进程上限 {config.sandbox.pids}；"
+                "要关闭，在配置里设 sandbox.mode = off，或设环境变量 AGENTCLI_SANDBOX=off[/dim]"
+            )
     elif command == "/rename":
         if not arg:
             console.print("[red]Usage:[/red] /rename <名字>")

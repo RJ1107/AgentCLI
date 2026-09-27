@@ -49,6 +49,7 @@ from agentcli.mcp import (
 )
 from agentcli.runtime import RuntimeApiServer
 from agentcli.runtime.api import runtime_api_key
+from agentcli.sandbox import close_all as close_sandboxes
 
 app = typer.Typer(
     name="agentcli",
@@ -455,6 +456,7 @@ async def _run_prompt(
     finally:
         if manager:
             await manager.aclose()
+        await close_sandboxes()
     if json_output:
         typer.echo(
             json.dumps(

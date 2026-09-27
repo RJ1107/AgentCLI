@@ -109,6 +109,8 @@ def make_config(model: str, workspace: Path, overrides: dict[str, Any] | None = 
         "features": {"mcp": False, "skill": False, "memory": False, "code_index": False},
         "policy": {"hitl_mode": "never"},
         "routing": {"suggest_modes": False},
+        # Tasks are graded by pytest on the host; keep commands there too.
+        "sandbox": {"mode": "off"},
     }
     config = load_config(
         project_root=workspace,

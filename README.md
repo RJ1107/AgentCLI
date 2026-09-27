@@ -14,7 +14,8 @@ A terminal AI coding agent, built from scratch in Python. It reads and edits cod
 
 **Agent loop and safety**
 - ReAct engine on `asyncio`: streamed tool calls are assembled as they arrive; consecutive read-only calls run concurrently, and any write is a barrier that runs alone and in order.
-- Writes and commands go through human approval (HITL), path isolation, dangerous-command blocking, and a JSONL audit log.
+- Shell commands run in a Docker sandbox: the container sees only the project, has no network or host environment (no API keys), no privileges, and capped memory, CPU, and processes. Commands inside it need no approval; one that asks for the network or for the host does.
+- File writes go through human approval (HITL) and path isolation; commands also through dangerous-command blocking; everything through a JSONL audit log.
 - Edits need a unique match and refuse files that were never read or changed since they were read.
 - A workspace snapshot is taken just before a request's first approved write, so a whole turn can be rolled back; read-only requests cost nothing.
 - `web_fetch` allows only public addresses and re-checks every redirect hop (SSRF protection).
@@ -156,6 +157,7 @@ uv run agentcli -p "Explain this repository"
 | `/skill [list\|show\|on\|off\|reload] [name]` | Skills |
 | `/tools`, `/mcp` | Tools and MCP servers |
 | `/hitl default\|auto`, `/policy`, `/audit [N]` | Approval mode, policy, audit log |
+| `/sandbox` | Where commands run: the Docker sandbox or the host |
 | `/snapshot [clean]`, `/restore <id-or-index>` | Snapshots and rollback |
 | `/task [add\|cancel\|log]` | Background tasks |
 | `/index [path]`, `/search <query>` | Code index and search |
@@ -165,7 +167,18 @@ uv run agentcli -p "Explain this repository"
 
 `read_file`, `write_file`, `edit_file`, `list_dir`, `directory_tree`, `get_file_info`, `glob`, `grep`, `search_code`, `bash`, `web_search`, `web_fetch`, `save_memory`, `search_memory`, `load_skill`, `save_skill`, `revert_turn`. When MCP servers are configured, `load_tools` is added to load their tools on demand.
 
-File writes, commands, MCP tools that change things, snapshot restore, and skill saving go through the policy, approval, and audit layer. With the default `auto` policy they need approval. In single-prompt mode there is no one to approve, so pass `--hitl never` only inside a sandbox you are willing to let the agent change.
+File writes, commands, MCP tools that change things, snapshot restore, and skill saving go through the policy, approval, and audit layer. With the default `auto` policy they need approval, except shell commands that run in the sandbox. In single-prompt mode there is no one to approve, so pass `--hitl never` only for a project you are willing to let the agent change.
+
+### Sandbox
+
+With Docker available, `bash` runs in a container instead of on your machine (`sandbox.mode`, default `docker`). The image, `agentcli-sandbox:1` (Python 3.12, uv, git, ripgrep), is built from `src/agentcli/sandbox/Dockerfile` the first time. One container per project per session, removed on exit (and by its own 12-hour timer if AgentCLI is killed):
+
+- only the project folder is mounted, at `/workspace`; the rest of the machine is invisible, so path isolation holds for commands too;
+- no network, and none of your environment variables, so no API keys;
+- no Linux capabilities, no privilege escalation, a read-only system with a writable `/tmp`, and limits of 2 GB, 2 CPUs, and 256 processes;
+- the project's dependencies go to a Docker volume at `/opt/venv`, leaving the project's own `.venv` alone.
+
+Commands in the sandbox need no approval: the worst they can do is change project files, which the turn snapshot can restore. A command that needs the internet sets `network: true` and runs in a one-off networked container after you approve; one that needs your machine's own tools sets `sandbox: false` and runs on the host after you approve. Without Docker, or with `sandbox.mode` `off` (or `AGENTCLI_SANDBOX=off`), commands run on the host and each needs approval, as before. The command blocklist still applies everywhere.
 
 An MCP tool's own `readOnlyHint` lets it skip approval only when its server entry sets `"trusted": true`, because a server describes itself and an untrusted one could claim to be read-only.
 

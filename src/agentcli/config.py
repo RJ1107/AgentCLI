@@ -173,6 +173,21 @@ class RoutingConfig:
 
 
 @dataclass(slots=True)
+class SandboxConfig:
+    """Where bash commands run (see agentcli/sandbox)."""
+
+    # "docker": in a container that sees only the project, without network; commands there
+    # need no approval. "off": on the host, each command approved. Without Docker the
+    # sandbox is unavailable and commands run on the host, approved.
+    mode: str = "docker"
+    image: str = "agentcli-sandbox:1"
+    memory: str = "2g"
+    cpus: float = 2.0
+    pids: int = 256
+    max_hours: float = 12.0
+
+
+@dataclass(slots=True)
 class AgentCliConfig:
     llm: LlmConfig = field(default_factory=LlmConfig)
     render_mode: str = "inline"
@@ -183,6 +198,7 @@ class AgentCliConfig:
     prompt: PromptConfig = field(default_factory=PromptConfig)
     features: FeatureConfig = field(default_factory=FeatureConfig)
     routing: RoutingConfig = field(default_factory=RoutingConfig)
+    sandbox: SandboxConfig = field(default_factory=SandboxConfig)
 
 
 def load_config(
@@ -332,6 +348,10 @@ def _apply_env(data: dict[str, Any], env: dict[str, str | None]) -> dict[str, An
         elif raw == "true":
             features[feature_key] = True
 
+    sandbox_mode = env.get("AGENTCLI_SANDBOX")
+    if sandbox_mode in {"docker", "off"}:
+        result.setdefault("sandbox", {})["mode"] = sandbox_mode
+
     hitl = env.get("AGENTCLI_HITL")
     if hitl in {"always", "auto", "never"}:
         policy["hitl_mode"] = hitl
@@ -367,6 +387,7 @@ def _dict_to_config(data: dict[str, Any]) -> AgentCliConfig:
         prompt=_section(PromptConfig, data.get("prompt")),
         features=_section(FeatureConfig, data.get("features")),
         routing=_section(RoutingConfig, data.get("routing")),
+        sandbox=_section(SandboxConfig, data.get("sandbox")),
     )
 
 

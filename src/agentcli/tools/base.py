@@ -48,6 +48,14 @@ class Tool:
     # Deferred tools are left out of the definitions sent to the model until load_tools
     # activates them, so a large MCP server costs a line of names, not its full schemas.
     deferred: bool = False
+    # Decides requires_approval per call when set (bash: not inside the sandbox, yes when
+    # it asks for the network or for the host).
+    approval_check: Callable[[dict[str, Any], ToolContext], bool] | None = None
+
+    def needs_approval(self, payload: dict[str, Any], context: ToolContext) -> bool:
+        if self.approval_check is not None:
+            return self.approval_check(payload, context)
+        return self.requires_approval
 
     def definition(self) -> dict[str, Any]:
         return {

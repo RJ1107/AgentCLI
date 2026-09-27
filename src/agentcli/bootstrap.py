@@ -16,6 +16,7 @@ async def build_tool_registry(
 ) -> tuple[ToolRegistry, McpClientManager | None]:
     registry = ToolRegistry()
     registry.register_all(get_builtin_tools())
+    _describe_shell(registry, config, cwd)
     if config.features.skill:
         _describe_skills(registry, cwd)
     manager: McpClientManager | None = None
@@ -26,6 +27,28 @@ async def build_tool_registry(
             descriptions = {name: spec.description for name, spec in manager.specs.items()}
             registry.register(build_load_tools_tool(registry, descriptions))
     return registry, manager
+
+
+def _describe_shell(registry: ToolRegistry, config: AgentCliConfig, cwd: str) -> None:
+    """In the sandbox the shell is Linux sh in a container, whatever the host is."""
+
+    from agentcli.sandbox import sandbox_for
+
+    tool = registry.get("bash")
+    if tool and sandbox_for(cwd, config) is not None:
+        registry.register(
+            replace(
+                tool,
+                description=(
+                    "Execute a shell command in a sandbox: /bin/sh in a Linux container that "
+                    "sees only the project, mounted at /workspace (the current directory). "
+                    "It has Python 3.12, uv, git, and ripgrep; install the project's "
+                    "dependencies there with `uv sync` or `pip install` (network: true). "
+                    "There is no network unless you set network: true, which asks the user. "
+                    "Set sandbox: false only when a command must run on the user's machine."
+                ),
+            )
+        )
 
 
 def _describe_skills(registry: ToolRegistry, cwd: str) -> None:
