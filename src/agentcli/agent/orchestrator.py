@@ -347,6 +347,34 @@ class AgentOrchestrator:
             steps = self.parse_plan(plan_result.content)
             if not steps:
                 raise ValueError(f"planner output could not be parsed:\n{plan_result.content}")
+            cycle = find_cycle(steps)
+            if cycle:
+                # A cycle means no step can ever start. Show the planner the loop and let it
+                # replan once; a second cyclic plan fails the run instead of stalling it.
+                yield {
+                    "type": "text_delta",
+                    "text": f"Plan has a dependency cycle ({' -> '.join(cycle)}); replanning.\n\n",
+                }
+                replan = await self.planner.execute(
+                    AgentMessage.task(
+                        "orchestrator",
+                        f"Create an execution plan for:\n{message}\n\nYour previous plan had a "
+                        f"dependency cycle: {' -> '.join(cycle)}. Steps can only depend on "
+                        "steps that do not depend on them. Return a plan without cycles.",
+                    )
+                )
+                self.total_usage = self.total_usage + replan.usage
+                self.total_turns += replan.turns
+                self.planner.clear_history()
+                steps = (
+                    self.parse_plan(replan.content) if replan.type != AgentMessageType.ERROR else []
+                )
+                cycle = find_cycle(steps) if steps else []
+                if not steps or cycle:
+                    raise ValueError(
+                        "planner returned a plan with a dependency cycle twice"
+                        + (f": {' -> '.join(cycle)}" if cycle else "")
+                    )
             yield {"type": "text_delta", "text": self.summarize_steps(steps) + "\n"}
             yield {"type": "text_delta", "text": "Phase 2: workers and reviewer\n\n"}
             for event in await self._execute_steps(

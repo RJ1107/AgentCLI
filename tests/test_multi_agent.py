@@ -226,3 +226,59 @@ def _message_text(content: Any) -> str:
     if isinstance(content, str):
         return content
     return str(content)
+
+
+class CyclicPlanClient(FakeTeamClient):
+    """Plans a -> b -> a first; fixes it when told about the cycle, unless stubborn."""
+
+    def __init__(self, stubborn: bool = False):
+        self.stubborn = stubborn
+        self.plans = 0
+
+    async def chat(self, messages, tools, *, system_prompt):  # noqa: ARG002
+        body = _message_text(messages[-1].content)
+        if "Original task" in body:
+            yield {"type": "text_delta", "text": '{"approved": true, "issues": []}'}
+        elif "Create an execution plan" in body:
+            self.plans += 1
+            fixed = "dependency cycle" in body and not self.stubborn
+            b_deps = "[]" if fixed else '["a"]'
+            yield {
+                "type": "text_delta",
+                "text": (
+                    '{"summary":"s","steps":['
+                    '{"id":"a","description":"Task A","type":"ANALYSIS","dependencies":["b"]},'
+                    f'{{"id":"b","description":"Task B","type":"ANALYSIS","dependencies":{b_deps}}}'
+                    "]}"
+                ),
+            }
+        else:
+            yield {"type": "text_delta", "text": "done"}
+        yield {"type": "message_end", "stop_reason": "end_turn"}
+
+
+def _collect(orchestrator, task):
+    async def run():
+        return [event async for event in orchestrator.run(task)]
+
+    return asyncio.run(run())
+
+
+def test_a_cyclic_plan_is_sent_back_to_the_planner_once(tmp_path):
+    client = CyclicPlanClient()
+    events = _collect(_orchestrator(tmp_path, client), "do it")
+
+    text = "".join(str(e.get("text") or "") for e in events)
+    assert client.plans == 2
+    assert "dependency cycle (step_1 -> step_2 -> step_1)" in text
+    assert not [e for e in events if e.get("type") == "error"]
+    assert events[-1]["type"] == "done"
+
+
+def test_a_second_cyclic_plan_fails_the_run_instead_of_stalling(tmp_path):
+    client = CyclicPlanClient(stubborn=True)
+    events = _collect(_orchestrator(tmp_path, client), "do it")
+
+    errors = [e for e in events if e.get("type") == "error"]
+    assert client.plans == 2
+    assert errors and "cycle twice" in str(errors[0]["error"])
