@@ -173,6 +173,14 @@ class RoutingConfig:
 
 
 @dataclass(slots=True)
+class WebConfig:
+    # web_fetch asks before the first fetch from a site not approved (see web/domains.py).
+    approve_new_domains: bool = True
+    # Sites allowed without asking, besides the built-in documentation sites; subdomains too.
+    allowed_domains: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
 class SandboxConfig:
     """Where bash commands run (see agentcli/sandbox)."""
 
@@ -199,6 +207,7 @@ class AgentCliConfig:
     features: FeatureConfig = field(default_factory=FeatureConfig)
     routing: RoutingConfig = field(default_factory=RoutingConfig)
     sandbox: SandboxConfig = field(default_factory=SandboxConfig)
+    web: WebConfig = field(default_factory=WebConfig)
 
 
 def load_config(
@@ -388,6 +397,7 @@ def _dict_to_config(data: dict[str, Any]) -> AgentCliConfig:
         features=_section(FeatureConfig, data.get("features")),
         routing=_section(RoutingConfig, data.get("routing")),
         sandbox=_section(SandboxConfig, data.get("sandbox")),
+        web=_section(WebConfig, data.get("web")),
     )
 
 

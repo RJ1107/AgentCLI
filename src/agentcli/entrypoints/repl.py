@@ -1029,7 +1029,23 @@ def _approval_prompt(
         f"[yellow]Approval required[/yellow] {request['tool_name']} "
         f"({request['danger_level']})\n{request['input']}"
     )
-    answer = Prompt.ask("Approve?", choices=["y", "n", "a", "s"], default="n")
+    choices = ["y", "n", "a", "s"]
+    host = ""
+    if request["tool_name"] == "web_fetch":
+        from agentcli.web.domains import host_of
+
+        host = host_of(str((request.get("input") or {}).get("url") or ""))
+    hint = "y 允许一次 · n 拒绝 · s 跳过 · a 本会话全部放行"
+    if host:
+        choices.append("d")
+        hint += f" · d 本项目以后都允许 {host}"
+    console.print(f"[dim]{hint}[/dim]")
+    answer = Prompt.ask("Approve?", choices=choices, default="n")
+    if answer == "d" and host:
+        from agentcli.web.domains import DomainPolicy
+
+        DomainPolicy(request.get("cwd") or os.getcwd()).remember(host)
+        return "approve"
     if answer == "a":
         permission_mode.set("auto")
         return "approve"

@@ -181,3 +181,65 @@ def test_client_rendered_pages_are_flagged():
 
     article = "<html><script>x</script><p>" + "正文内容。" * 100 + "</p></html>"
     assert not _needs_javascript(article, "正文内容。" * 100)
+
+
+# ---------------------------------------------------------------------------
+# Per-site approval: a fetch can carry data out in its URL
+# ---------------------------------------------------------------------------
+
+
+def test_documentation_sites_are_allowed_and_others_ask(tmp_path):
+    from agentcli.web.domains import DomainPolicy
+
+    policy = DomainPolicy(str(tmp_path), ["corp.example"])
+
+    assert policy.allowed("docs.python.org")
+    assert policy.allowed("github.com")
+    assert policy.allowed("wiki.corp.example")  # configured, subdomains included
+    assert not policy.allowed("attacker.example")
+    assert not policy.allowed("notgithub.com")  # a suffix match must be a whole label
+
+
+def test_an_approved_site_is_remembered_for_the_project_only(tmp_path):
+    from agentcli.web.domains import DomainPolicy
+
+    DomainPolicy(str(tmp_path / "a")).remember("www.douyin.com")
+
+    assert DomainPolicy(str(tmp_path / "a")).allowed("www.douyin.com")
+    assert not DomainPolicy(str(tmp_path / "b")).allowed("www.douyin.com")
+
+
+def test_web_fetch_asks_only_for_sites_not_yet_approved(tmp_path):
+    from agentcli.tools.builtins import _web_fetch_needs_approval
+
+    config = load_config(project_root=tmp_path)
+    context = ToolContext(cwd=str(tmp_path), config=config)
+
+    assert _web_fetch_needs_approval({"url": "https://attacker.example/?d=secret"}, context)
+    assert not _web_fetch_needs_approval({"url": "https://docs.python.org/3/"}, context)
+    config.web.approve_new_domains = False
+    assert not _web_fetch_needs_approval({"url": "https://attacker.example/"}, context)
+
+
+def test_a_redirect_to_an_unapproved_site_is_not_followed(monkeypatch):
+    _fake_dns(
+        monkeypatch, {"docs.python.org": "93.184.216.34", "attacker.example": "93.184.216.35"}
+    )
+    seen = []
+
+    def handler(request):
+        seen.append(request.url.host)
+        if request.url.host == "docs.python.org":
+            return httpx.Response(302, headers={"location": "https://attacker.example/?d=x"})
+        return httpx.Response(200, text="<p>should not be reached</p>")
+
+    text = asyncio.run(
+        fetch_url(
+            "https://docs.python.org/start",
+            transport=httpx.MockTransport(handler),
+            allow_host=lambda host: host.endswith("python.org"),
+        )
+    )
+
+    assert seen == ["docs.python.org"]
+    assert "has not been approved" in text and "attacker.example" in text

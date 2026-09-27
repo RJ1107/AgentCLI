@@ -235,6 +235,7 @@ def get_builtin_tools() -> list[Tool]:
             ),
             required_keys=["url"],
             handler=_web_fetch,
+            approval_check=_web_fetch_needs_approval,
         ),
         Tool(
             name="save_memory",
@@ -634,10 +635,25 @@ async def _web_search(payload: dict[str, Any], _context: ToolContext) -> ToolRes
     return ToolResult(content, display_summary=f"Search: {len(results)} results")
 
 
-async def _web_fetch(payload: dict[str, Any], _context: ToolContext) -> ToolResult:
+def _web_fetch_needs_approval(payload: dict[str, Any], context: ToolContext) -> bool:
+    """A site not approved yet asks: a fetch can carry data out in its URL."""
+
+    from agentcli.web.domains import host_of, policy_for
+
+    if not context.config.web.approve_new_domains:
+        return False
+    return not policy_for(context.cwd, context.config).allowed(host_of(str(payload.get("url"))))
+
+
+async def _web_fetch(payload: dict[str, Any], context: ToolContext) -> ToolResult:
+    from agentcli.web.domains import policy_for
+
     max_length = int(payload.get("max_length") or payload.get("maxLength") or 10_000)
+    allow_host = None
+    if context.config.web.approve_new_domains:
+        allow_host = policy_for(context.cwd, context.config).allowed
     try:
-        content = await fetch_url(str(payload["url"]), max_length=max_length)
+        content = await fetch_url(str(payload["url"]), max_length=max_length, allow_host=allow_host)
     except Exception as exc:  # noqa: BLE001
         # Some httpx errors (timeouts in particular) stringify to "", which would leave the
         # model guessing. The type name alone already says what went wrong.

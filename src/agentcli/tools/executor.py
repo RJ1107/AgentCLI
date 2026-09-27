@@ -144,6 +144,7 @@ class ToolExecutor:
                 "input": payload,
                 "danger_level": tool.danger_level,
                 "description": tool.description,
+                "cwd": context.cwd,
             }
         )
         if asyncio.iscoroutine(result):

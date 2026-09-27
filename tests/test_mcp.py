@@ -104,3 +104,49 @@ if __name__ == "__main__":
     assert any(tool.name == "mcp__noisy__echo" for tool in tools)
     captured = capsys.readouterr()
     assert "NOISY_MCP_STARTUP" not in captured.err
+
+
+def test_servers_are_told_the_project_folder_as_their_root(tmp_path, monkeypatch):
+    # Servers that write files (a browser saving a snapshot) only write inside the roots
+    # the client names; with none they refuse every path.
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    project = tmp_path / "项目"
+    project.mkdir()
+    server = tmp_path / "roots_server.py"
+    server.write_text(
+        """
+from mcp.server.fastmcp import Context, FastMCP
+
+mcp = FastMCP("roots")
+
+@mcp.tool()
+async def roots(ctx: Context) -> str:
+    result = await ctx.session.list_roots()
+    return "|".join(str(root.uri) for root in result.roots)
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")
+""".lstrip(),
+        encoding="utf-8",
+    )
+    (project / ".agentcli").mkdir()
+    (project / ".agentcli" / "mcp.json").write_text(
+        json.dumps(
+            {"mcpServers": {"roots": {"command": "python", "args": [str(server)], "defer": False}}}
+        ),
+        encoding="utf-8",
+    )
+
+    async def run():
+        manager = McpClientManager(project)
+        try:
+            tools = {tool.name: tool for tool in await manager.load_tools()}
+            context = ToolContext(cwd=str(project), config=load_config(project_root=project))
+            return await tools["mcp__roots__roots"].execute({}, context)
+        finally:
+            await manager.aclose()
+
+    result = asyncio.run(run())
+
+    assert not result.is_error, result.content
+    assert result.content.strip() == project.resolve().as_uri()

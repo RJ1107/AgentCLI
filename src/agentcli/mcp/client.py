@@ -11,7 +11,8 @@ from typing import Any
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamablehttp_client
-from pydantic import AnyUrl
+from mcp.types import ListRootsResult, Root
+from pydantic import AnyUrl, FileUrl
 
 from agentcli.mcp.cache import ToolListCache
 from agentcli.mcp.config import McpServerSpec, load_mcp_server_specs
@@ -300,6 +301,16 @@ class McpClientManager:
             self._sessions[spec.name] = persistent
         yield await persistent.get()
 
+    async def _roots(self, _context: Any) -> ListRootsResult:
+        """MCP roots: the folders this client works in. Servers that write files (a browser
+        saving a snapshot or a screenshot) only write inside them, and refuse everything
+        when a client names none."""
+
+        root = Path(self.project_root)
+        return ListRootsResult(
+            roots=[Root(uri=FileUrl(root.as_uri()), name=root.name or str(root))]
+        )
+
     @asynccontextmanager
     async def _connect(self, spec: McpServerSpec):
         if spec.type in {"stdio", "local"}:
@@ -314,7 +325,7 @@ class McpClientManager:
             with open(os.devnull, "w", encoding="utf-8") as errlog:
                 async with (
                     stdio_client(params, errlog=errlog) as (read, write),
-                    ClientSession(read, write) as session,
+                    ClientSession(read, write, list_roots_callback=self._roots) as session,
                 ):
                     await session.initialize()
                     yield session
@@ -328,7 +339,7 @@ class McpClientManager:
                     headers=spec.headers or None,
                     timeout=spec.timeout,
                 ) as (read, write, _session_id),
-                ClientSession(read, write) as session,
+                ClientSession(read, write, list_roots_callback=self._roots) as session,
             ):
                 await session.initialize()
                 yield session

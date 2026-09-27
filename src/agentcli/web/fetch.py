@@ -3,8 +3,9 @@ from __future__ import annotations
 import ipaddress
 import re
 import socket
+from collections.abc import Callable
 from html.parser import HTMLParser
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlsplit
 
 import httpx
 
@@ -31,6 +32,7 @@ async def fetch_url(
     timeout: float = 15.0,
     *,
     transport: httpx.AsyncBaseTransport | None = None,
+    allow_host: Callable[[str], bool] | None = None,
 ) -> str:
     # Redirects are followed by hand so every hop is checked. With follow_redirects=True a
     # public URL could answer "302 -> http://127.0.0.1/admin" and httpx would go there.
@@ -51,7 +53,19 @@ async def fetch_url(
                             request=response.request,
                             response=response,
                         )
-                    current = urljoin(str(response.url), location)
+                    target = urljoin(str(response.url), location)
+                    host = (urlsplit(target).hostname or "").lower()
+                    if (
+                        allow_host is not None
+                        and host != (urlsplit(current).hostname or "").lower()
+                        and not allow_host(host)
+                    ):
+                        # The new site was never approved; following would skip the question.
+                        return (
+                            f"[{current} redirects to {target}, a site that has not been "
+                            "approved. Call web_fetch with that URL to ask the user.]"
+                        )
+                    current = target
                     continue
                 response.raise_for_status()
                 body = await _read_capped(response)
