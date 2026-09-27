@@ -169,8 +169,7 @@ What the model is handed with each request (tier 2):
 - Tier 2's bar was chosen by F0.5 (precision first) and tier 3's by F2 (recall first) over
   a sweep from 0 to 0.8. Tier 2 then recalls 56% of relevant memories itself; the index in
   the system prompt and `search_memory` (79% at its bar) cover the rest.
-- The labels are mine and still to be spot-checked by a second person; the numbers will
-  be rerun (offline, free) if any change.
+- The labels are mine and were spot-checked by a second person, who changed none.
 
 ### Defects the experiments found
 
