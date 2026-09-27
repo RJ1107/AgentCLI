@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from agentcli.memory import MemoryManager
+from agentcli.memory import FileMemory
 from agentcli.policy import CommandGuard
 from agentcli.rag import CodeIndex
 from agentcli.skill import SkillRegistry
@@ -226,17 +226,33 @@ def get_builtin_tools() -> list[Tool]:
             description=(
                 "Save an explicit or durable fact to long-term project memory. Use only for stable "
                 "preferences, project constraints, user corrections, or reusable decisions; never "
-                "store secrets, temporary task state, raw logs, or uncertain claims."
+                "store secrets, temporary task state, raw logs, or uncertain claims. Saving with "
+                "the same title updates that memory instead of adding another."
             ),
             parameters=object_schema(
                 {
-                    "content": {"type": "string", "description": "Durable fact to remember"},
+                    "title": {
+                        "type": "string",
+                        "description": "One line that says what this memory is (the index line)",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "The fact, plus why it holds and how to apply it",
+                    },
+                    "keywords": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": (
+                            "5-10 search terms someone might use to look this up later: "
+                            "synonyms, abbreviations, and both Chinese and English names "
+                            "(for a database port: 数据库, DB, database, 端口, port)"
+                        ),
+                    },
                     "kind": {
                         "type": "string",
                         "enum": ["fact", "preference", "constraint", "correction", "decision"],
                     },
                     "importance": {"type": "number", "description": "Score from 0 to 1"},
-                    "confidence": {"type": "number", "description": "Score from 0 to 1"},
                     "expires_at": {
                         "type": "string",
                         "description": "Optional ISO-8601 expiry for time-sensitive memory",
@@ -357,13 +373,19 @@ def get_builtin_tools() -> list[Tool]:
 
 
 def _in_saved_results(path: str) -> bool:
-    from agentcli.context.spill import saved_results_root
+    """Saved tool results and memory files live outside the workspace but may be read."""
 
-    try:
-        Path(path).resolve().relative_to(saved_results_root().resolve())
-    except (ValueError, OSError):
-        return False
-    return True
+    from agentcli.context.spill import saved_results_root
+    from agentcli.memory import memory_root
+
+    resolved = Path(path).resolve()
+    for root in (saved_results_root(), memory_root()):
+        try:
+            resolved.relative_to(root.resolve())
+        except (ValueError, OSError):
+            continue
+        return True
+    return False
 
 
 async def _read_file(payload: dict[str, Any], context: ToolContext) -> ToolResult:
@@ -589,24 +611,35 @@ async def _web_fetch(payload: dict[str, Any], _context: ToolContext) -> ToolResu
 # ---------------------------------------------------------------------------
 
 
+def _file_memory(context: ToolContext) -> FileMemory:
+    memory = context.config.memory
+    return FileMemory(
+        context.cwd,
+        max_entries=memory.max_long_term_entries,
+        max_chars=memory.max_memory_chars,
+        legacy_db=memory.long_term_db_path,
+    )
+
+
 async def _save_memory(payload: dict[str, Any], context: ToolContext) -> ToolResult:
     if not context.config.features.memory or not context.config.memory.long_term_enabled:
         return ToolResult("Long-term memory is disabled.", is_error=True)
-    manager = MemoryManager(
-        context.config.memory.long_term_db_path,
-        scope=context.cwd,
-        max_entries=context.config.memory.max_long_term_entries,
-        max_content_length=context.config.memory.max_memory_chars,
-    )
-    memory_id = manager.save(
-        str(payload["content"]),
-        kind=str(payload.get("kind") or "fact"),
-        source="agent",
-        importance=float(payload.get("importance", 0.5)),
-        confidence=float(payload.get("confidence", 1.0)),
-        expires_at=payload.get("expires_at"),
-    )
-    return ToolResult(f"Saved memory #{memory_id}")
+    keywords = payload.get("keywords") or []
+    if not isinstance(keywords, list):
+        keywords = [str(keywords)]
+    try:
+        record = _file_memory(context).save(
+            str(payload["content"]),
+            title=str(payload.get("title") or ""),
+            kind=str(payload.get("kind") or "fact"),
+            importance=float(payload.get("importance", 0.5)),
+            keywords=[str(k) for k in keywords],
+            expires=str(payload.get("expires_at") or ""),
+            source="agent",
+        )
+    except ValueError as exc:
+        return ToolResult(f"Not saved: {exc}", is_error=True)
+    return ToolResult(f"Saved memory {record.name}.md: {record.title}")
 
 
 async def _search_memory(payload: dict[str, Any], context: ToolContext) -> ToolResult:
@@ -615,24 +648,20 @@ async def _search_memory(payload: dict[str, Any], context: ToolContext) -> ToolR
     raw_kinds = payload.get("kinds")
     if raw_kinds is not None and not isinstance(raw_kinds, list):
         return ToolResult("search_memory kinds must be an array of strings.", is_error=True)
-    manager = MemoryManager(
-        context.config.memory.long_term_db_path,
-        scope=context.cwd,
-        max_entries=context.config.memory.max_long_term_entries,
-        max_content_length=context.config.memory.max_memory_chars,
-    )
-    rows = manager.recall(
+    hits = _file_memory(context).search(
         str(payload["query"]),
-        limit=int(payload.get("limit") or context.config.memory.recall_limit),
+        limit=int(payload.get("limit") or context.config.memory.search_limit),
         kinds=[str(kind) for kind in raw_kinds] if raw_kinds else None,
-        min_score=context.config.memory.recall_min_score,
+        min_coverage=context.config.memory.search_min_coverage,
     )
-    if not rows:
+    if not hits:
         return ToolResult("(no relevant long-term memory)")
-    content = "\n".join(
-        f"#{row.id} [{row.kind}, importance={row.importance:.2f}] {row.content}" for row in rows
+    content = "\n\n".join(
+        f"[{hit.record.kind}] {hit.record.title} ({hit.record.name}.md, "
+        f"importance {hit.record.importance:.2f})\n{hit.record.content}"
+        for hit in hits
     )
-    return ToolResult(content, display_summary=f"Recalled {len(rows)} memories")
+    return ToolResult(content, display_summary=f"Recalled {len(hits)} memories")
 
 
 # Keep the original handler imports working for SDK users and existing tests.

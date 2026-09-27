@@ -4,7 +4,7 @@ import asyncio
 
 from agentcli.agent import QueryEngine
 from agentcli.config import load_config
-from agentcli.memory import MemoryManager
+from agentcli.memory import FileMemory
 from agentcli.prompt import PromptAssembler
 from agentcli.tools import ToolRegistry
 
@@ -54,8 +54,9 @@ def test_recall_rides_on_the_user_message_and_system_prompt_stays_stable(tmp_pat
     )
 
     asyncio.run(engine.ask_complete_async("第一次请求，不涉及测试偏好"))
-    MemoryManager(config.memory.long_term_db_path, scope=str(tmp_path)).save(
+    FileMemory(str(tmp_path)).save(
         "用户偏好使用 uv run python -m pytest 执行测试",
+        title="执行测试用 uv run python -m pytest",
         kind="preference",
         importance=0.9,
     )
@@ -71,14 +72,31 @@ def test_recall_rides_on_the_user_message_and_system_prompt_stays_stable(tmp_pat
     assert "uv run python -m pytest" not in client.user_messages[0]
 
 
+def test_memory_index_is_in_the_system_prompt_from_the_start(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    config = load_config(project_root=tmp_path)
+    FileMemory(str(tmp_path)).save(
+        "金额字段一律用 Decimal", title="金额用 Decimal", kind="constraint"
+    )
+    assembler = PromptAssembler(config, str(tmp_path), [], "model", "provider")
+
+    static = assembler.build_static()
+
+    assert '<project-memory trust="untrusted-data">' in static
+    assert "- [constraint] 金额用 Decimal" in static
+    assert static == assembler.build_static()
+
+
 def test_dynamic_memory_is_bounded_and_marked_untrusted(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     config = load_config(project_root=tmp_path)
-    manager = MemoryManager(config.memory.long_term_db_path, scope=str(tmp_path))
-    manager.save("项目测试统一使用 pytest", kind="constraint")
+    FileMemory(str(tmp_path)).save(
+        "项目测试统一使用 pytest", title="项目测试用 pytest", kind="constraint"
+    )
     assembler = PromptAssembler(config, str(tmp_path), [], "model", "provider")
 
-    dynamic = assembler.build_dynamic("项目测试怎么运行")
+    dynamic = assembler.build_dynamic("项目测试用什么")
 
     assert '<recalled-memory trust="untrusted-data">' in dynamic
     assert "项目测试统一使用 pytest" in dynamic
+    assert "项目测试统一使用 pytest" not in assembler.build_dynamic("帮我改一下 README 的标题")

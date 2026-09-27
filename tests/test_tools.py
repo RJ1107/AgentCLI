@@ -3,8 +3,10 @@ from __future__ import annotations
 import asyncio
 
 from agentcli.config import load_config
+from agentcli.memory import FileMemory
 from agentcli.tools import ToolRegistry, get_builtin_tools
 from agentcli.tools.base import ToolContext
+from agentcli.tools.builtins import _read_file as read_file_tool
 from agentcli.tools.builtins import save_memory, search_memory
 from agentcli.tools.file_ops import directory_tree, edit_file, glob_files, grep
 
@@ -49,19 +51,27 @@ def test_memory_tools_save_metadata_and_recall_relevant_items(tmp_path, monkeypa
     saved = asyncio.run(
         save_memory(
             {
+                "title": "执行测试用 uv",
                 "content": "用户偏好用 uv 执行 Python 测试",
                 "kind": "preference",
                 "importance": 0.9,
+                "keywords": ["uv", "pytest", "test", "测试"],
             },
             context,
         )
     )
-    recalled = asyncio.run(search_memory({"query": "怎么执行测试"}, context))
+    recalled = asyncio.run(search_memory({"query": "how to run tests"}, context))
+    memory_file = saved.content.split("Saved memory ")[1].split(":")[0]
+    readable = asyncio.run(
+        read_file_tool({"path": str(FileMemory(str(tmp_path)).folder / memory_file)}, context)
+    )
 
     assert not saved.is_error
     assert not recalled.is_error
     assert "uv" in recalled.content
     assert "preference" in recalled.content
+    assert not readable.is_error  # memory files are outside the workspace but readable
+    assert "用户偏好用 uv" in readable.content
 
 
 def test_edit_file_dry_run_returns_diff_without_modifying_file(tmp_path):

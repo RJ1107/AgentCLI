@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -22,7 +23,9 @@ from agentcli import __version__
 from agentcli.agent import Agent, AgentOrchestrator, PlanExecuteAgent
 from agentcli.bootstrap import build_tool_registry
 from agentcli.config import AgentCliConfig, config_to_public_dict
+from agentcli.context.spill import use_session_folder
 from agentcli.entrypoints.model_selector import ModelSelectorState, run_model_selector
+from agentcli.entrypoints.session_selector import pick_session
 from agentcli.llm import create_llm_client
 from agentcli.llm.model_profiles import (
     DEFAULT_MODEL_PROFILES,
@@ -30,7 +33,7 @@ from agentcli.llm.model_profiles import (
     CustomModelStore,
     ModelProfile,
 )
-from agentcli.memory import MemoryManager
+from agentcli.memory import FileMemory
 from agentcli.paths import agentcli_home
 from agentcli.policy import AuditLog
 from agentcli.prompt import PromptAssembler
@@ -38,23 +41,32 @@ from agentcli.rag import CodeIndex
 from agentcli.render import RichRenderer
 from agentcli.routing import IntentRouter, ModelTiers, RouteDecision
 from agentcli.runtime import DurableTaskManager
+from agentcli.session import Session, SessionStore
 from agentcli.skill import SkillRegistry
 from agentcli.snapshot import SnapshotService
 from agentcli.tools import ToolRegistry
-from agentcli.types import Usage
+from agentcli.types import Message, Usage
 
 COMMAND_HELP: list[tuple[str, str, str]] = [
     # (command, usage, what it does)
     ("/help", "/help", "列出所有命令"),
     ("/exit", "/exit 或 /quit", "退出（也可以按 Ctrl+D）"),
-    ("/clear", "/clear", "清空当前对话，从头开始"),
+    ("/new", "/new", "开一个新会话（当前会话自动保存，随时可以 /resume 回来）"),
+    ("/clear", "/clear", "同 /new，并清屏"),
+    ("/resume", "/resume [会话 id]", "恢复本项目之前的会话；不带参数打开选择器"),
+    ("/sessions", "/sessions [delete <id>]", "列出（或删除）本项目保存的会话"),
+    ("/rename", "/rename <名字>", "给当前会话改名"),
     ("/compact", "/compact [重点]", "立刻把对话压缩成摘要；可以写明要重点保留的内容"),
     ("/context", "/context", "当前模型、上下文大小、空闲时长等"),
     ("/usage", "/usage", "上一次请求的 token 用量、缓存命中和费用"),
     ("/model", "/model [模型] 或 /model <提供商> <模型>", "查看或切换模型；不带参数打开选择器"),
     ("/plan", "/plan <任务>", "先规划成 DAG，再按依赖并行执行"),
     ("/team", "/team [--plan] <任务>", "多 Agent：Planner 拆解、Worker 并行、Reviewer 审核"),
-    ("/memory", "/memory [search <词>|stats|delete <id>|clear]", "查看和管理长期记忆"),
+    (
+        "/memory",
+        "/memory [search <词>|show <名字>|delete <名字>|stats|path|clear]",
+        "查看和管理长期记忆（每条一个文件）",
+    ),
     ("/save", "/save <事实>", "手动存一条长期记忆"),
     ("/skill", "/skill [list|show|on|off|reload] [名字]", "查看、启用、停用 Skill"),
     ("/tools", "/tools", "列出当前可用的工具"),
@@ -219,7 +231,96 @@ class PermissionModeController:
         return self.set("auto" if self.mode == "default" else "default")
 
 
-async def start_repl(cwd: str, config: AgentCliConfig) -> None:
+class _ChatSession:
+    """The saved session behind the REPL: resumable, switchable, written after each turn.
+
+    Nothing is written until the first message is sent, so opening AgentCLI and leaving
+    leaves no empty session behind.
+    """
+
+    def __init__(
+        self,
+        store: SessionStore,
+        cwd: str,
+        agent: Agent,
+        system_prompt: Callable[[], str] | None = None,
+    ):
+        self.store = store
+        self.cwd = cwd
+        self.agent = agent
+        # Rebuilds the system prompt when a conversation starts over, so the memory index
+        # in it includes what the last one saved. Within a conversation it never changes.
+        self.system_prompt = system_prompt
+        self.current = self._fresh()
+
+    def _fresh(self) -> Session:
+        session = self.store.create(self.cwd, self.agent.llm_client.model_name)
+        use_session_folder(session.folder)
+        return session
+
+    def record(self, user_text: str) -> None:
+        self.current.record_turn(
+            user_text,
+            _last_answer(self.agent.history),
+            self.agent.history,
+            self.agent.llm_client.model_name,
+        )
+
+    def save(self) -> None:
+        self.current.save_history(self.agent.history)
+
+    def start_new(self) -> None:
+        self.save()
+        self.agent.clear_history()
+        self._refresh_prompt()
+        self.current = self._fresh()
+
+    def load(self, session: Session) -> None:
+        self.save()
+        self.agent.clear_history()
+        self.agent.history = session.load_history()
+        self._refresh_prompt()
+        # The idle reminder then knows how long ago this conversation last reached the model.
+        self.agent.last_active_at = session.meta.updated_at or None
+        self.current = session
+        use_session_folder(session.folder)
+
+    def _refresh_prompt(self) -> None:
+        if self.system_prompt:
+            self.agent.system_prompt = self.system_prompt()
+
+    async def resume(self, target: str, console: Console) -> bool:
+        """target: "last", "pick", or a session id (or a unique prefix of one)."""
+
+        if target == "last":
+            session = self.store.latest(self.cwd)
+        elif target == "pick":
+            meta = await pick_session(self.store.list(self.cwd), self.current.id)
+            if meta is None:
+                return False
+            session = self.store.open(meta.id)
+        else:
+            session = self.store.find(target, self.cwd) or self.store.find(target)
+        if session is None:
+            console.print("[yellow]没有找到可以恢复的会话。[/yellow]")
+            return False
+        self.load(session)
+        meta = session.meta
+        console.print(
+            f"[green]已恢复会话[/green]：{meta.title or '(未命名)'}"
+            f"[dim]（{meta.turns} 轮，最后更新 {meta.updated_text}，id {meta.id}）[/dim]"
+        )
+        return True
+
+
+def _last_answer(history: list[Message]) -> str:
+    for message in reversed(history):
+        if message.role == "assistant" and isinstance(message.content, str) and message.content:
+            return message.content
+    return ""
+
+
+async def start_repl(cwd: str, config: AgentCliConfig, resume: str | None = None) -> None:
     console = Console()
     permission_mode = PermissionModeController(config)
     registry, mcp_manager = await build_tool_registry(config=config, cwd=cwd)
@@ -258,6 +359,11 @@ async def start_repl(cwd: str, config: AgentCliConfig) -> None:
         config=config,
         approval_callback=lambda request: _approval_prompt(request, console, permission_mode),
     )
+    store = SessionStore()
+    store.cleanup(config.memory.session_retention_days)
+    chat = _ChatSession(store, cwd, agent, assembler.build_static)
+    if resume:
+        await chat.resume(resume, console)
 
     history_path = agentcli_home() / "history" / "prompt_history.txt"
     history_path.parent.mkdir(parents=True, exist_ok=True)
@@ -344,11 +450,13 @@ async def start_repl(cwd: str, config: AgentCliConfig) -> None:
                     registry,
                     permission_mode,
                     renderer,
+                    chat,
                 )
                 if should_exit:
                     return
                 continue
             await _run_agent(agent, renderer, message)
+            chat.record(message)
     finally:
         # MCP servers stay connected for the whole session (a browser keeps its page between
         # tool calls); stop them, and the browsers they launched, on the way out.
@@ -390,6 +498,7 @@ async def _handle_slash(
     registry: ToolRegistry,
     permission_mode: PermissionModeController,
     renderer: RichRenderer,
+    chat: _ChatSession | None = None,
 ) -> bool:
     command, _, rest = raw.partition(" ")
     arg = rest.strip()
@@ -407,11 +516,32 @@ async def _handle_slash(
         )
     elif command == "/compact":
         await _compact(agent, console, arg)
-    elif command == "/clear":
-        agent.clear_history()
-        console.clear()
+        if chat:
+            chat.save()
+    elif command in {"/clear", "/new"}:
+        if chat:
+            chat.start_new()
+        else:
+            agent.clear_history()
+        if command == "/clear":
+            console.clear()
+        console.print(
+            "[green]已开始新会话。[/green][dim]之前的会话已保存，/resume 可以回去。[/dim]"
+        )
+    elif command == "/resume":
+        if chat:
+            await chat.resume(arg or "pick", console)
+    elif command == "/sessions":
+        if chat:
+            _sessions_command(arg, console, chat)
+    elif command == "/rename":
+        if not arg:
+            console.print("[red]Usage:[/red] /rename <名字>")
+        elif chat:
+            chat.current.rename(arg)
+            console.print(f"当前会话已改名为：{chat.current.meta.title}")
     elif command == "/context":
-        memories = MemoryManager(config.memory.long_term_db_path, scope=cwd).list(limit=5)
+        memories = _file_memory(cwd, config).list()
         table = Table(title="AgentCLI Context")
         table.add_column("Field")
         table.add_column("Value")
@@ -427,7 +557,7 @@ async def _handle_slash(
         table.add_row("idle since last request", idle)
         table.add_row("assumed cache lifetime", f"{config.memory.cache_ttl_minutes} min")
         table.add_row("render", config.render_mode)
-        table.add_row("memory", f"{len(memories)} recent entries")
+        table.add_row("memory", f"{len(memories)} saved")
         table.add_row("tools", str(len(registry.list_names())))
         console.print(table)
     elif command == "/memory":
@@ -436,13 +566,8 @@ async def _handle_slash(
         if not arg:
             console.print("[red]Usage:[/red] /save <fact>")
         else:
-            memory_id = MemoryManager(
-                config.memory.long_term_db_path,
-                scope=cwd,
-                max_entries=config.memory.max_long_term_entries,
-                max_content_length=config.memory.max_memory_chars,
-            ).save(arg, source="manual", importance=0.8)
-            console.print(f"Saved memory #{memory_id}")
+            record = _file_memory(cwd, config).save(arg, source="manual", importance=0.8)
+            console.print(f"已保存记忆 {record.name}.md：{record.title}")
     elif command == "/config":
         console.print_json(json.dumps(config_to_public_dict(config), ensure_ascii=False))
     elif command == "/tools":
@@ -536,27 +661,67 @@ async def _handle_slash(
     return False
 
 
-async def _memory_command(arg: str, console: Console, cwd: str, config: AgentCliConfig) -> None:
-    manager = MemoryManager(
-        config.memory.long_term_db_path,
-        scope=cwd,
+def _sessions_command(arg: str, console: Console, chat: _ChatSession) -> None:
+    sub_command, _, rest = arg.partition(" ")
+    if sub_command == "delete" and rest.strip():
+        target = chat.store.find(rest.strip(), chat.cwd)
+        if target is None or target.id == chat.current.id:
+            console.print("[yellow]没有找到这个会话（当前会话不能删除）。[/yellow]")
+        else:
+            chat.store.delete(target.id)
+            console.print(f"已删除会话 {target.id}")
+        return
+    metas = chat.store.list(chat.cwd)
+    if not metas:
+        console.print("(本项目还没有保存的会话)")
+        return
+    table = Table(title="本项目的会话")
+    for column in ("id", "标题", "最后更新", "轮数", "模型"):
+        table.add_column(column)
+    for meta in metas:
+        mark = " ←" if meta.id == chat.current.id else ""
+        title = (meta.title or "(未命名)") + mark
+        table.add_row(meta.id, title, meta.updated_text, str(meta.turns), meta.model)
+    console.print(table)
+
+
+def _file_memory(cwd: str, config: AgentCliConfig) -> FileMemory:
+    return FileMemory(
+        cwd,
         max_entries=config.memory.max_long_term_entries,
-        max_content_length=config.memory.max_memory_chars,
+        max_chars=config.memory.max_memory_chars,
+        legacy_db=config.memory.long_term_db_path,
     )
+
+
+async def _memory_command(arg: str, console: Console, cwd: str, config: AgentCliConfig) -> None:
+    memory = _file_memory(cwd, config)
     sub, _, rest = arg.partition(" ")
+    rest = rest.strip()
     if sub == "clear":
-        count = manager.clear()
-        console.print(f"Cleared {count} memories.")
+        console.print(f"已删除 {memory.clear()} 条记忆。")
     elif sub == "search":
-        rows = manager.search(rest)
-        console.print("\n".join(f"#{row.id} {row.content}" for row in rows) or "(no matches)")
+        hits = memory.search(rest, limit=config.memory.search_limit)
+        console.print(
+            "\n".join(
+                f"{hit.record.name}  [{hit.record.kind}] {hit.record.title}  "
+                f"(覆盖率 {hit.coverage:.2f})"
+                for hit in hits
+            )
+            or "(没有匹配的记忆)"
+        )
+    elif sub == "show" and rest:
+        record = memory.get(rest)
+        console.print(record.content if record else "(没有这条记忆)")
     elif sub == "stats":
-        console.print_json(json.dumps(manager.stats(), ensure_ascii=False))
-    elif sub == "delete" and rest.strip().isdigit():
-        console.print(f"Deleted: {manager.delete(int(rest.strip()))}")
+        console.print_json(json.dumps(memory.stats(), ensure_ascii=False))
+    elif sub == "delete" and rest:
+        console.print("已删除。" if memory.delete(rest) else "(没有这条记忆)")
+    elif sub == "path":
+        console.print(str(memory.folder))
     else:
-        rows = manager.list()
-        console.print("\n".join(f"#{row.id} {row.content}" for row in rows) or "(no memories)")
+        console.print(memory.index_text() or "(还没有记忆)")
+        console.print(f"[dim]文件在 {memory.folder}[/dim]")
 
 
 def _hitl_command(

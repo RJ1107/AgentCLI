@@ -129,6 +129,19 @@ def main(
         Path | None,
         typer.Option("--cwd", help="Working directory (default: current dir)"),
     ] = None,
+    # --- Sessions ---
+    continue_session: Annotated[
+        bool,
+        typer.Option("--continue", "-c", help="Continue this project's most recent session"),
+    ] = False,
+    resume: Annotated[
+        bool,
+        typer.Option("--resume", "-r", help="Pick a saved session of this project to resume"),
+    ] = False,
+    session_id: Annotated[
+        str | None,
+        typer.Option("--session", help="Resume a saved session by id (or a unique prefix)"),
+    ] = None,
     # --- Version ---
     version: Annotated[
         bool,
@@ -189,7 +202,8 @@ def main(
             )
         )
     else:
-        asyncio.run(start_repl(str(root), config))
+        target = session_id or ("pick" if resume else "last" if continue_session else None)
+        asyncio.run(start_repl(str(root), config, resume=target))
 
 
 # ---------------------------------------------------------------------------

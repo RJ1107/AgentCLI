@@ -117,10 +117,11 @@ def test_saved_results_are_deleted_after_the_retention_period(tmp_path):
     old.mkdir(parents=True)
     (old / "x.txt").write_text("old", encoding="utf-8")
     ten_days_ago = time.time() - 10 * 86_400
-    os.utime(old.parent, (ten_days_ago, ten_days_ago))
+    os.utime(old, (ten_days_ago, ten_days_ago))
     spill._cleaned = False
 
     ToolResultStore(tmp_path, retention_days=7).save("call_1", "new")
 
-    assert not old.parent.exists()
+    assert not old.exists()
+    assert old.parent.exists()  # the session folder itself has its own retention
     assert any(tmp_path.rglob("call_1.txt"))

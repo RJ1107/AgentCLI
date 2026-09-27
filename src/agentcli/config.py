@@ -46,11 +46,23 @@ class MemoryConfig:
     # A safety valve only; the token thresholds below are what normally trigger compaction.
     max_conversation_history: int = 500
     long_term_enabled: bool = True
+    # The old SQLite store; read once per project to import its memories into files.
     long_term_db_path: str = ""  # empty: <AGENTCLI_HOME>/memory.db
     max_long_term_entries: int = 1_000
     max_memory_chars: int = 8_000
-    recall_limit: int = 6
-    recall_min_score: float = 0.05
+    # Memory is recalled in three tiers (see prompt/assembler.py):
+    # 1. the index of all memories, in the system prompt from the start of a session;
+    memory_index_lines: int = 200
+    memory_index_chars: int = 8_000
+    # 2. the full text of the few memories a request is clearly about, with each request.
+    #    Precision first: a wrong memory costs tokens and can mislead, a missing one can be
+    #    looked up. The gate is the share of the request's (IDF-weighted) words a memory
+    #    covers; the value comes from the recall evaluation in evals/memory_recall.py.
+    recall_limit: int = 3
+    recall_min_coverage: float = 0.55
+    # 3. search_memory, which the model calls when it needs more: recall first.
+    search_limit: int = 8
+    search_min_coverage: float = 0.35
     token_budget_mode: str = "balanced"
     # Context compaction works inside a workspace W = min(80% of the model's input window,
     # workspace_tokens), so a 1M-token model still compacts around 200k (see ContextBudget).
@@ -66,6 +78,8 @@ class MemoryConfig:
     compression_reserve_tokens: int = 1_024
     # Cleared tool results are saved under <AGENTCLI_HOME>/sessions and deleted after this.
     tool_result_retention_days: float = 7.0
+    # Saved sessions (/resume) not used for this long are deleted.
+    session_retention_days: float = 30.0
     summary_max_chars: int = 6_000
     # Summarize older turns with a model; the extractive summary remains the fallback.
     llm_summary: bool = True

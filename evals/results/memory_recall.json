@@ -1,0 +1,462 @@
+{
+ "queries": 119,
+ "memories": 80,
+ "methods": {
+  "legacy": {
+   "recall@3": 0.8333333333333334,
+   "precision@3": 0.3249158249158249,
+   "mrr": 0.7620210036876705,
+   "by_type": {
+    "direct": 0.95,
+    "paraphrase": 0.9,
+    "english": 0.4,
+    "multi": 0.6
+   }
+  },
+  "bm25": {
+   "recall@3": 0.8888888888888888,
+   "precision@3": 0.3468013468013468,
+   "mrr": 0.8513468013468013,
+   "by_type": {
+    "direct": 1.0,
+    "paraphrase": 0.95,
+    "english": 0.4666666666666667,
+    "multi": 0.7
+   }
+  },
+  "bm25+kw": {
+   "recall@3": 0.9595959595959596,
+   "precision@3": 0.3686868686868687,
+   "mrr": 0.9242424242424242,
+   "by_type": {
+    "direct": 1.0,
+    "paraphrase": 0.925,
+    "english": 1.0,
+    "multi": 0.7
+   }
+  }
+ },
+ "weight_grid_top": [
+  {
+   "importance_weight": 0.05,
+   "recency_weight": 0.02,
+   "recall@3": 0.9696969696969697,
+   "precision@3": 0.372053872053872,
+   "mrr": 0.93013468013468
+  },
+  {
+   "importance_weight": 0.02,
+   "recency_weight": 0.0,
+   "recall@3": 0.9595959595959596,
+   "precision@3": 0.3686868686868687,
+   "mrr": 0.9292929292929293
+  },
+  {
+   "importance_weight": 0.05,
+   "recency_weight": 0.0,
+   "recall@3": 0.9595959595959596,
+   "precision@3": 0.3686868686868687,
+   "mrr": 0.9292929292929293
+  },
+  {
+   "importance_weight": 0.1,
+   "recency_weight": 0.0,
+   "recall@3": 0.9696969696969697,
+   "precision@3": 0.372053872053872,
+   "mrr": 0.9287878787878788
+  },
+  {
+   "importance_weight": 0.1,
+   "recency_weight": 0.02,
+   "recall@3": 0.9696969696969697,
+   "precision@3": 0.372053872053872,
+   "mrr": 0.9287878787878788
+  }
+ ],
+ "weight_grid_worst": [
+  {
+   "importance_weight": 0.05,
+   "recency_weight": 0.2,
+   "recall@3": 0.9646464646464646,
+   "precision@3": 0.3686868686868687,
+   "mrr": 0.9186868686868687
+  },
+  {
+   "importance_weight": 0.1,
+   "recency_weight": 0.2,
+   "recall@3": 0.9646464646464646,
+   "precision@3": 0.3686868686868687,
+   "mrr": 0.9186868686868687
+  },
+  {
+   "importance_weight": 0.2,
+   "recency_weight": 0.2,
+   "recall@3": 0.9646464646464646,
+   "precision@3": 0.3686868686868687,
+   "mrr": 0.9183501683501684
+  }
+ ],
+ "tier2_sweep": [
+  {
+   "gate": 0.0,
+   "precision": 0.29069767441860467,
+   "recall": 0.9523809523809523,
+   "f0.5": 0.3376097231600271,
+   "f2": 0.6544502617801048,
+   "injected_per_query": 2.8907563025210083,
+   "false_recall_on_unrelated": 1.0
+  },
+  {
+   "gate": 0.05,
+   "precision": 0.32371794871794873,
+   "recall": 0.9619047619047619,
+   "f0.5": 0.3732446415373245,
+   "f2": 0.6898907103825137,
+   "injected_per_query": 2.6218487394957983,
+   "false_recall_on_unrelated": 0.9
+  },
+  {
+   "gate": 0.1,
+   "precision": 0.376865671641791,
+   "recall": 0.9619047619047619,
+   "f0.5": 0.4290569243840272,
+   "f2": 0.7340116279069768,
+   "injected_per_query": 2.2521008403361344,
+   "false_recall_on_unrelated": 0.55
+  },
+  {
+   "gate": 0.15,
+   "precision": 0.4,
+   "recall": 0.9714285714285714,
+   "f0.5": 0.45333333333333337,
+   "f2": 0.7555555555555555,
+   "injected_per_query": 2.142857142857143,
+   "false_recall_on_unrelated": 0.55
+  },
+  {
+   "gate": 0.2,
+   "precision": 0.4682926829268293,
+   "recall": 0.9142857142857143,
+   "f0.5": 0.518918918918919,
+   "f2": 0.7679999999999999,
+   "injected_per_query": 1.7226890756302522,
+   "false_recall_on_unrelated": 0.35
+  },
+  {
+   "gate": 0.25,
+   "precision": 0.5416666666666666,
+   "recall": 0.8666666666666667,
+   "f0.5": 0.5855855855855855,
+   "f2": 0.7738095238095237,
+   "injected_per_query": 1.411764705882353,
+   "false_recall_on_unrelated": 0.3
+  },
+  {
+   "gate": 0.3,
+   "precision": 0.5985915492957746,
+   "recall": 0.8095238095238095,
+   "f0.5": 0.6315007429420505,
+   "f2": 0.7562277580071173,
+   "injected_per_query": 1.1932773109243697,
+   "false_recall_on_unrelated": 0.25
+  },
+  {
+   "gate": 0.35,
+   "precision": 0.6916666666666667,
+   "recall": 0.7904761904761904,
+   "f0.5": 0.7094017094017093,
+   "f2": 0.7685185185185185,
+   "injected_per_query": 1.0084033613445378,
+   "false_recall_on_unrelated": 0.15
+  },
+  {
+   "gate": 0.4,
+   "precision": 0.7745098039215687,
+   "recall": 0.7523809523809524,
+   "f0.5": 0.7699805068226121,
+   "f2": 0.7567049808429118,
+   "injected_per_query": 0.8571428571428571,
+   "false_recall_on_unrelated": 0.1
+  },
+  {
+   "gate": 0.45,
+   "precision": 0.7934782608695652,
+   "recall": 0.6952380952380952,
+   "f0.5": 0.7716701902748415,
+   "f2": 0.712890625,
+   "injected_per_query": 0.773109243697479,
+   "false_recall_on_unrelated": 0.1
+  },
+  {
+   "gate": 0.5,
+   "precision": 0.7976190476190477,
+   "recall": 0.638095238095238,
+   "f0.5": 0.7596371882086169,
+   "f2": 0.6646825396825397,
+   "injected_per_query": 0.7058823529411765,
+   "false_recall_on_unrelated": 0.1
+  },
+  {
+   "gate": 0.55,
+   "precision": 0.9076923076923077,
+   "recall": 0.5619047619047619,
+   "f0.5": 0.8082191780821918,
+   "f2": 0.6082474226804123,
+   "injected_per_query": 0.5462184873949579,
+   "false_recall_on_unrelated": 0.05
+  },
+  {
+   "gate": 0.6,
+   "precision": 0.8928571428571429,
+   "recall": 0.47619047619047616,
+   "f0.5": 0.7598784194528875,
+   "f2": 0.5252100840336135,
+   "injected_per_query": 0.47058823529411764,
+   "false_recall_on_unrelated": 0.05
+  },
+  {
+   "gate": 0.65,
+   "precision": 0.9,
+   "recall": 0.42857142857142855,
+   "f0.5": 0.7377049180327868,
+   "f2": 0.4787234042553191,
+   "injected_per_query": 0.42016806722689076,
+   "false_recall_on_unrelated": 0.05
+  },
+  {
+   "gate": 0.7,
+   "precision": 0.9428571428571428,
+   "recall": 0.3142857142857143,
+   "f0.5": 0.673469387755102,
+   "f2": 0.3626373626373627,
+   "injected_per_query": 0.29411764705882354,
+   "false_recall_on_unrelated": 0.0
+  },
+  {
+   "gate": 0.75,
+   "precision": 1.0,
+   "recall": 0.26666666666666666,
+   "f0.5": 0.6451612903225807,
+   "f2": 0.3125,
+   "injected_per_query": 0.23529411764705882,
+   "false_recall_on_unrelated": 0.0
+  },
+  {
+   "gate": 0.8,
+   "precision": 1.0,
+   "recall": 0.22857142857142856,
+   "f0.5": 0.5970149253731344,
+   "f2": 0.27027027027027023,
+   "injected_per_query": 0.20168067226890757,
+   "false_recall_on_unrelated": 0.0
+  }
+ ],
+ "tier3_sweep": [
+  {
+   "gate": 0.0,
+   "precision": 0.12252042007001167,
+   "recall": 1.0,
+   "f0.5": 0.14859892442683273,
+   "f2": 0.4111198120595145,
+   "injected_per_query": 7.201680672268908,
+   "false_recall_on_unrelated": 1.0
+  },
+  {
+   "gate": 0.05,
+   "precision": 0.16455696202531644,
+   "recall": 0.9904761904761905,
+   "f0.5": 0.1974933535890619,
+   "f2": 0.49429657794676807,
+   "injected_per_query": 5.310924369747899,
+   "false_recall_on_unrelated": 0.9
+  },
+  {
+   "gate": 0.1,
+   "precision": 0.2175732217573222,
+   "recall": 0.9904761904761905,
+   "f0.5": 0.25780862667327714,
+   "f2": 0.579064587973274,
+   "injected_per_query": 4.016806722689076,
+   "false_recall_on_unrelated": 0.55
+  },
+  {
+   "gate": 0.15,
+   "precision": 0.25181598062953997,
+   "recall": 0.9904761904761905,
+   "f0.5": 0.29595902105862265,
+   "f2": 0.6242496998799519,
+   "injected_per_query": 3.4705882352941178,
+   "false_recall_on_unrelated": 0.55
+  },
+  {
+   "gate": 0.2,
+   "precision": 0.3233333333333333,
+   "recall": 0.9238095238095239,
+   "f0.5": 0.37164750957854403,
+   "f2": 0.673611111111111,
+   "injected_per_query": 2.5210084033613445,
+   "false_recall_on_unrelated": 0.35
+  },
+  {
+   "gate": 0.25,
+   "precision": 0.40625,
+   "recall": 0.8666666666666667,
+   "f0.5": 0.45454545454545453,
+   "f2": 0.7065217391304348,
+   "injected_per_query": 1.8823529411764706,
+   "false_recall_on_unrelated": 0.3
+  },
+  {
+   "gate": 0.3,
+   "precision": 0.5089820359281437,
+   "recall": 0.8095238095238095,
+   "f0.5": 0.5498059508408797,
+   "f2": 0.7240204429301532,
+   "injected_per_query": 1.403361344537815,
+   "false_recall_on_unrelated": 0.25
+  },
+  {
+   "gate": 0.35,
+   "precision": 0.6535433070866141,
+   "recall": 0.7904761904761904,
+   "f0.5": 0.6769983686786295,
+   "f2": 0.7586837294332722,
+   "injected_per_query": 1.0672268907563025,
+   "false_recall_on_unrelated": 0.15
+  },
+  {
+   "gate": 0.4,
+   "precision": 0.7523809523809524,
+   "recall": 0.7523809523809524,
+   "f0.5": 0.7523809523809524,
+   "f2": 0.7523809523809524,
+   "injected_per_query": 0.8823529411764706,
+   "false_recall_on_unrelated": 0.1
+  },
+  {
+   "gate": 0.45,
+   "precision": 0.7934782608695652,
+   "recall": 0.6952380952380952,
+   "f0.5": 0.7716701902748415,
+   "f2": 0.712890625,
+   "injected_per_query": 0.773109243697479,
+   "false_recall_on_unrelated": 0.1
+  },
+  {
+   "gate": 0.5,
+   "precision": 0.7976190476190477,
+   "recall": 0.638095238095238,
+   "f0.5": 0.7596371882086169,
+   "f2": 0.6646825396825397,
+   "injected_per_query": 0.7058823529411765,
+   "false_recall_on_unrelated": 0.1
+  },
+  {
+   "gate": 0.55,
+   "precision": 0.9076923076923077,
+   "recall": 0.5619047619047619,
+   "f0.5": 0.8082191780821918,
+   "f2": 0.6082474226804123,
+   "injected_per_query": 0.5462184873949579,
+   "false_recall_on_unrelated": 0.05
+  },
+  {
+   "gate": 0.6,
+   "precision": 0.8928571428571429,
+   "recall": 0.47619047619047616,
+   "f0.5": 0.7598784194528875,
+   "f2": 0.5252100840336135,
+   "injected_per_query": 0.47058823529411764,
+   "false_recall_on_unrelated": 0.05
+  },
+  {
+   "gate": 0.65,
+   "precision": 0.9,
+   "recall": 0.42857142857142855,
+   "f0.5": 0.7377049180327868,
+   "f2": 0.4787234042553191,
+   "injected_per_query": 0.42016806722689076,
+   "false_recall_on_unrelated": 0.05
+  },
+  {
+   "gate": 0.7,
+   "precision": 0.9428571428571428,
+   "recall": 0.3142857142857143,
+   "f0.5": 0.673469387755102,
+   "f2": 0.3626373626373627,
+   "injected_per_query": 0.29411764705882354,
+   "false_recall_on_unrelated": 0.0
+  },
+  {
+   "gate": 0.75,
+   "precision": 1.0,
+   "recall": 0.26666666666666666,
+   "f0.5": 0.6451612903225807,
+   "f2": 0.3125,
+   "injected_per_query": 0.23529411764705882,
+   "false_recall_on_unrelated": 0.0
+  },
+  {
+   "gate": 0.8,
+   "precision": 1.0,
+   "recall": 0.22857142857142856,
+   "f0.5": 0.5970149253731344,
+   "f2": 0.27027027027027023,
+   "injected_per_query": 0.20168067226890757,
+   "false_recall_on_unrelated": 0.0
+  }
+ ],
+ "tier2_choice": {
+  "gate": 0.55,
+  "precision": 0.9076923076923077,
+  "recall": 0.5619047619047619,
+  "f0.5": 0.8082191780821918,
+  "f2": 0.6082474226804123,
+  "injected_per_query": 0.5462184873949579,
+  "false_recall_on_unrelated": 0.05
+ },
+ "tier3_choice": {
+  "gate": 0.35,
+  "precision": 0.6535433070866141,
+  "recall": 0.7904761904761904,
+  "f0.5": 0.6769983686786295,
+  "f2": 0.7586837294332722,
+  "injected_per_query": 1.0672268907563025,
+  "false_recall_on_unrelated": 0.15
+ },
+ "legacy_policy": {
+  "gate": 0.0,
+  "precision": 0.1456,
+  "recall": 0.8666666666666667,
+  "f0.5": 0.1746641074856046,
+  "f2": 0.4354066985645933,
+  "injected_per_query": 5.2521008403361344,
+  "false_recall_on_unrelated": 1.0
+ },
+ "tier3_misses_at_3": [
+  {
+   "query": "什么时候可以上线到生产",
+   "type": "paraphrase",
+   "expected": [
+    "m38"
+   ],
+   "got": [
+    "m76",
+    "m73",
+    "m24"
+   ]
+  },
+  {
+   "query": "下单时怎么防止超卖",
+   "type": "paraphrase",
+   "expected": [
+    "m46"
+   ],
+   "got": [
+    "m78",
+    "m14",
+    "m20"
+   ]
+  }
+ ]
+}

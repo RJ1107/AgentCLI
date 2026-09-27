@@ -1,0 +1,562 @@
+{
+ "m01": [
+  "测试数据库端口",
+  "6544",
+  "PostgreSQL test port",
+  "test DB port",
+  "测试环境容器"
+ ],
+ "m02": [
+  "金额 Decimal",
+  "Decimal 金额",
+  "禁止 float",
+  "ROUND_HALF_UP",
+  "money precision"
+ ],
+ "m03": [
+  "禁止修改 migrations",
+  "历史迁移文件",
+  "新增 migration",
+  "migrations directory",
+  "数据库表结构变更"
+ ],
+ "m04": [
+  "uv run pytest",
+  "uv run python -m pytest -q",
+  "测试命令",
+  "pytest runner",
+  "不要直接调用 pytest"
+ ],
+ "m05": [
+  "Redis 7",
+  "缓存 Redis",
+  "不用 Memcached",
+  "Redis persistence",
+  "Redis pub/sub"
+ ],
+ "m06": [
+  "缓存 TTL 45 秒",
+  "商品详情缓存过期",
+  "热门商品 300 秒",
+  "cache expiration",
+  "缓存默认过期时间"
+ ],
+ "m07": [
+  "/v3/core",
+  "/public/v2",
+  "API 前缀",
+  "内部 API 路由",
+  "public API prefix"
+ ],
+ "m08": [
+  "release/kestrel",
+  "发布分支",
+  "release branch",
+  "热修复分支",
+  "Kestrel release"
+ ],
+ "m09": [
+  "Tomas Reyes",
+  "代码评审人",
+  "PR reviewer",
+  "后端评审",
+  "默认 reviewer"
+ ],
+ "m10": [
+  "日志保留 17 天",
+  "Loki retention",
+  "审计日志 1 年",
+  "log retention",
+  "日志保留策略"
+ ],
+ "m11": [
+  "AC- 错误码",
+  "AC-4031",
+  "错误码格式",
+  "四位数字错误码",
+  "API error code prefix"
+ ],
+ "m12": [
+  "#ops-heron",
+  "Slack 值班群",
+  "线上告警频道",
+  "ops-heron channel",
+  "alert notification"
+ ],
+ "m13": [
+  "Docusaurus",
+  "开发文档站点",
+  "docs.shop.internal",
+  "文档部署",
+  "documentation platform"
+ ],
+ "m14": [
+  "HTTP 超时 3100ms",
+  "下游服务超时",
+  "重试 3 次",
+  "退避 1.8 秒",
+  "HTTP timeout retry"
+ ],
+ "m15": [
+  "CPU 告警 83%",
+  "CPU threshold",
+  "持续 5 分钟",
+  "CPU alert",
+  "CPU utilization alarm"
+ ],
+ "m16": [
+  "上传最大 250MB",
+  "文件上传限制",
+  "分片上传",
+  "maximum file upload size",
+  "250 MB upload"
+ ],
+ "m17": [
+  "灰度比例 35%",
+  "canary rollout",
+  "灰度发布",
+  "观察 1 小时",
+  "traffic rollout percentage"
+ ],
+ "m18": [
+  "PostgreSQL 16.4",
+  "主数据库",
+  "只读副本两台",
+  "Postgres primary",
+  "database replicas"
+ ],
+ "m19": [
+  "orders.v2.created",
+  "订单创建 topic",
+  "Kafka orders",
+  "订单事件",
+  "order created message"
+ ],
+ "m20": [
+  "CI 超时 38 分钟",
+  "pipeline timeout",
+  "job 15 分钟",
+  "CI job 拆分",
+  "continuous integration timeout"
+ ],
+ "m21": [
+  "覆盖率 81%",
+  "测试覆盖率门槛",
+  "unit test coverage",
+  "merge coverage requirement",
+  "81 percent coverage"
+ ],
+ "m22": [
+  "Mantine",
+  "前端组件库",
+  "管理后台 UI",
+  "不要 Ant Design",
+  "React component library"
+ ],
+ "m23": [
+  "Asia/Singapore",
+  "新加坡时区",
+  "服务器时区",
+  "数据库时区",
+  "timezone setting"
+ ],
+ "m24": [
+  "密钥轮换 62 天",
+  "API key rotation",
+  "生产密钥",
+  "Vault 管理密钥",
+  "secret rotation schedule"
+ ],
+ "m25": [
+  "Lighthouse-7",
+  "Grafana 监控看板",
+  "业务 dashboard",
+  "监控面板名称",
+  "Grafana dashboard"
+ ],
+ "m26": [
+  "Priya Nair",
+  "合规联系人",
+  "用户数据合规",
+  "compliance contact",
+  "数据隐私问题"
+ ],
+ "m27": [
+  "最大并发 40",
+  "后台任务队列",
+  "task queue concurrency",
+  "超出并发排队",
+  "worker concurrency limit"
+ ],
+ "m28": [
+  "httpx",
+  "不要 requests",
+  "异步 HTTP 请求",
+  "Python HTTP client",
+  "用户纠正请求库"
+ ],
+ "m29": [
+  "ISO 8601",
+  "日期格式",
+  "不要时间戳",
+  "2026-09-27T10:00:00+08:00",
+  "API date format"
+ ],
+ "m30": [
+  "commit 信息中文",
+  "中文 commit message",
+  "feat fix chore",
+  "提交信息前缀",
+  "Git commit convention"
+ ],
+ "m31": [
+  "JWT 刷新令牌",
+  "access token 15 分钟",
+  "refresh token 14 天",
+  "登录认证",
+  "JWT authentication"
+ ],
+ "m32": [
+  "日志手机号脱敏",
+  "禁止记录完整手机号",
+  "身份证号脱敏",
+  "138****1234",
+  "PII logging"
+ ],
+ "m33": [
+  "Stripe 支付",
+  "支付宝支付",
+  "微信支付排期",
+  "支付渠道",
+  "payment providers"
+ ],
+ "m34": [
+  "Meilisearch",
+  "商品搜索引擎",
+  "不用 Elasticsearch",
+  "search index",
+  "商品搜索方案"
+ ],
+ "m35": [
+  "MinIO",
+  "S3 兼容存储",
+  "商品图片存储",
+  "CDN 回源",
+  "object storage"
+ ],
+ "m36": [
+  "函数不超过 50 行",
+  "function length limit",
+  "拆分长函数",
+  "代码规范",
+  "50-line function"
+ ],
+ "m37": [
+  "Python 3.12",
+  "后端 Python 版本",
+  "不要 Python 3.13 语法",
+  "Python runtime",
+  "Python version policy"
+ ],
+ "m38": [
+  "周二 10:30 部署",
+  "生产部署窗口",
+  "Tuesday deployment",
+  "紧急修复部署",
+  "deployment schedule"
+ ],
+ "m39": [
+  "Alembic",
+  "数据库迁移工具",
+  "migrations/",
+  "migration management",
+  "Alembic migration files"
+ ],
+ "m40": [
+  "preprod.lumen-test.io",
+  "预发域名",
+  "preprod environment",
+  "staging URL",
+  "预发环境地址"
+ ],
+ "m41": [
+  "类型注解必须写",
+  "mypy strict",
+  "函数签名类型",
+  "Python type hints",
+  "strict typing"
+ ],
+ "m42": [
+  "Bluefin",
+  "最大企业客户",
+  "客户代号",
+  "接口变更提前通知",
+  "enterprise customer"
+ ],
+ "m43": [
+  "API 限流 600 次每分钟",
+  "600 requests per minute",
+  "开放 API rate limit",
+  "每个 key 限流",
+  "API throttling"
+ ],
+ "m44": [
+  "Flagpole",
+  "功能开关服务",
+  "feature flags",
+  "新功能默认关闭",
+  "feature toggle"
+ ],
+ "m45": [
+  "Celery",
+  "Redis broker",
+  "异步任务队列",
+  "不用 RQ",
+  "background task queue"
+ ],
+ "m46": [
+  "库存乐观锁",
+  "版本号并发控制",
+  "冲突重试 3 次",
+  "库存扣减",
+  "optimistic locking"
+ ],
+ "m47": [
+  "factory_boy",
+  "测试数据 factory",
+  "不要 JSON fixture",
+  "test data generation",
+  "用户纠正测试数据"
+ ],
+ "m48": [
+  "变量英文全称",
+  "不要拼音变量名",
+  "避免 usr cnt 缩写",
+  "variable naming",
+  "完整英文标识符"
+ ],
+ "m49": [
+  "python:3.12-slim",
+  "Docker 基础镜像",
+  "多阶段构建",
+  "Python slim image",
+  "container build"
+ ],
+ "m50": [
+  "K8s 内存上限 1Gi",
+  "Pod memory limit",
+  "512Mi request",
+  "Kubernetes resources",
+  "容器内存配置"
+ ],
+ "m51": [
+  "Sentry",
+  "性能追踪采样率 0.2",
+  "error reporting",
+  "Sentry tracing sample rate",
+  "错误上报配置"
+ ],
+ "m52": [
+  "AWS SES",
+  "交易邮件发送",
+  "Mailchimp 营销邮件",
+  "邮件服务商",
+  "transactional email"
+ ],
+ "m53": [
+  "阿里云短信",
+  "短信验证码服务",
+  "短信签名 闪购",
+  "Aliyun SMS",
+  "短信提供商"
+ ],
+ "m54": [
+  "验证码 5 分钟有效",
+  "短信验证码过期",
+  "60 秒发送间隔",
+  "手机号发送频率",
+  "SMS verification code TTL"
+ ],
+ "m55": [
+  "README 中文",
+  "接口文档英文",
+  "项目文档语言",
+  "README language",
+  "API documentation English"
+ ],
+ "m56": [
+  "FastAPI OpenAPI 自动生成",
+  "/docs",
+  "接口文档地址",
+  "OpenAPI documentation",
+  "自动 API 文档"
+ ],
+ "m57": [
+  "FastAPI",
+  "后端 Web 框架",
+  "不用 Django",
+  "Python web framework",
+  "FastAPI backend"
+ ],
+ "m58": [
+  "Celery beat",
+  "定时任务",
+  "schedules.py",
+  "periodic tasks",
+  "Celery scheduler"
+ ],
+ "m59": [
+  "分页最大 100 条",
+  "默认分页 20",
+  "page size limit",
+  "列表接口分页",
+  "pagination settings"
+ ],
+ "m60": [
+  "Harbor",
+  "旧单体系统",
+  "2025 年下线",
+  "legacy monolith",
+  "Harbor system retirement"
+ ],
+ "m61": [
+  "不要格式化整个仓库",
+  "只格式化改动文件",
+  "不要全仓 black",
+  "仓库格式化规范",
+  "用户纠正代码格式化"
+ ],
+ "m62": [
+  "用户错误提示中文",
+  "日志英文",
+  "错误信息语言",
+  "Chinese error messages",
+  "English logs"
+ ],
+ "m63": [
+  "订单号格式",
+  "SO 年月日序号",
+  "SO20260927000123",
+  "order number format",
+  "6 位订单序号"
+ ],
+ "m64": [
+  "shop/pricing.py",
+  "价格计算模块",
+  "折扣满减税费",
+  "pricing module",
+  "商品价格逻辑"
+ ],
+ "m65": [
+  "优惠券最多 3 张",
+  "优惠叠加限制",
+  "订单优惠券",
+  "coupon stacking limit",
+  "discount combination"
+ ],
+ "m66": [
+  "退款 7 天内",
+  "原路退款",
+  "超过 7 天人工处理",
+  "refund policy",
+  "退款时限"
+ ],
+ "m67": [
+  "搜索索引每 10 分钟同步",
+  "商品增量同步",
+  "search index sync",
+  "incremental indexing",
+  "搜索数据刷新频率"
+ ],
+ "m68": [
+  "商品图片最大 5MB",
+  "jpg png webp",
+  "图片格式限制",
+  "product image size limit",
+  "图片上传限制"
+ ],
+ "m69": [
+  "前端 PR 附截图",
+  "改动前后截图",
+  "frontend pull request",
+  "PR screenshot requirement",
+  "代码评审截图"
+ ],
+ "m70": [
+  "docker compose",
+  "本地开发启动依赖",
+  "Postgres Redis MinIO",
+  "本地环境",
+  "compose up"
+ ],
+ "m71": [
+  "环境变量配置",
+  "pydantic-settings",
+  "不要提交 .env",
+  "application configuration",
+  "environment-based settings"
+ ],
+ "m72": [
+  "Metabase",
+  "运营数据看板",
+  "只读账号 Priya",
+  "business dashboard",
+  "只读数据访问"
+ ],
+ "m73": [
+  "禁止直连生产数据库",
+  "生产数据库访问",
+  "只读副本",
+  "堡垒机查询",
+  "production DB security"
+ ],
+ "m74": [
+  "会员 4 级",
+  "普通银金黑金",
+  "按年消费额升级",
+  "membership tiers",
+  "会员等级规则"
+ ],
+ "m75": [
+  "积分 1 元 1 分",
+  "100 积分抵 1 元",
+  "消费积分规则",
+  "loyalty points",
+  "积分兑换比例"
+ ],
+ "m76": [
+  "注释解释为什么",
+  "不要复述代码",
+  "代码注释规范",
+  "why comments",
+  "comment rationale"
+ ],
+ "m77": [
+  "Redis key shop: 前缀",
+  "Redis 键命名",
+  "shop: namespace",
+  "用户纠正 Redis key",
+  "Redis key prefix"
+ ],
+ "m78": [
+  "下单接口 2000 QPS",
+  "P99 小于 300ms",
+  "压测目标",
+  "order API performance",
+  "load testing"
+ ],
+ "m79": [
+  "React 18",
+  "Vite",
+  "管理后台前端",
+  "frontend framework",
+  "React admin app"
+ ],
+ "m80": [
+  "团队周会周四",
+  "每周四下午三点",
+  "weekly team meeting",
+  "Thursday 3 PM",
+  "团队会议时间"
+ ]
+}

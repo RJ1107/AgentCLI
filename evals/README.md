@@ -16,6 +16,7 @@ of success rates.
 | `context_retention.py` | Experiment 1: compression strategies over a long session |
 | `coding_tasks.py` | Experiments 2 and 3: coding tasks graded by their tests |
 | `make_task_fixtures.py`, `make_hard_fixture.py` | Write the task fixtures |
+| `memory_recall.py`, `memory_dataset.py` | Experiment 4: long-term memory recall |
 | `report.py` | Tables from `results/*.jsonl` |
 | `spend.py` | OpenRouter spend so far, for budgeting |
 
@@ -138,6 +139,38 @@ Opus 5.5's cost per solved task, which is why it is the fast tier. Qwen3.8 Flash
 on six runs, left out above. This table was run before the fix for truncated output (below), so
 the `hardkit` failures of GLM-5.3 Flash, Qwen3.8 Flash, and DeepSeek V4 Flash include turns that
 ended silently when their output was cut off.
+
+### Experiment 4: long-term memory recall
+
+80 memories of a made-up shop backend and 119 questions labelled with the memories that
+answer them (`memory_dataset.py`): 40 in the memory's own words, 40 in other words, 15 in
+English or abbreviations, 4 with several answers, and 20 that nothing answers (some share
+words with memories on purpose). Keywords were written once by GPT-6 Luna with the same
+instruction `save_memory` gives the agent, without seeing the questions (about $0.002);
+everything else runs offline.
+
+| method | recall@3 | MRR | English / abbreviations |
+|---|---|---|---|
+| previous scorer (overlap + weighted importance) | 0.833 | 0.762 | 0.40 |
+| BM25 | 0.889 | 0.851 | 0.47 |
+| **BM25 + saved keywords** | **0.960** | **0.924** | **1.00** |
+
+What the model is handed with each request (tier 2):
+
+| policy | precision | memories per request | unrelated requests given a memory |
+|---|---|---|---|
+| previous: top 6 of anything overlapping | 15% | 5.25 | 100% |
+| **top 3, coverage >= 0.55** | **91%** | **0.55** | **5%** |
+
+- Keywords written at save time close the gap for other words and other languages at no
+  extra model call.
+- Importance and recency barely change the order (MRR 0.919 with neither, 0.924 with the
+  best nudge, importance 0.05 and recency 0.02), so relevance ranks and they break ties.
+- Tier 2's bar was chosen by F0.5 (precision first) and tier 3's by F2 (recall first) over
+  a sweep from 0 to 0.8. Tier 2 then recalls 56% of relevant memories itself; the index in
+  the system prompt and `search_memory` (79% at its bar) cover the rest.
+- The labels are mine and still to be spot-checked by a second person; the numbers will
+  be rerun (offline, free) if any change.
 
 ### Defects the experiments found
 

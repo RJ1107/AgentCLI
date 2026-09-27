@@ -173,9 +173,33 @@ An MCP tool's own `readOnlyHint` lets it skip approval only when its server entr
 
 AgentCLI uses three memory layers:
 
-- Short-term: the current session's messages and tool results.
+- Short-term: the current session's messages and tool results, compacted as described below and saved as a session you can resume.
 - Static long-term: project instruction files in the system prompt. `AGENTS.md`, `AGENTCLI.md`, and `AGENTCLI.local.md` in the project root or `.agentcli/`, plus any paths in `prompt.custom_prompt_paths`. Put project rules, test and run commands, and conventions there.
-- Dynamic long-term: project-scoped SQLite records with kind, source, importance, confidence, TTL, access count, and content hash, recalled by relevance to each question.
+- Dynamic long-term: one Markdown file per memory under `<AGENTCLI_HOME>/memory/<project>/`, with a generated `MEMORY.md` index (see below).
+
+### Sessions
+
+Every conversation is saved under `<AGENTCLI_HOME>/sessions/<id>/`: the messages the model sees (after compaction), a readable transcript, and its title, project, model, and times. Nothing is written before the first message.
+
+```bash
+agentcli -c            # continue this project's latest session
+agentcli -r            # pick one to resume
+agentcli --session ID  # resume one by id
+```
+
+In the REPL, `/new` (or `/clear`) starts a new session and keeps the old one, `/resume` opens the picker, `/sessions` lists or deletes, and `/rename` names the current one. Sessions unused for 30 days are deleted (`memory.session_retention_days`); saved tool results after 7.
+
+### Long-term memory
+
+The agent saves a memory with `save_memory` (or you with `/save`) when something should outlast the session: a constraint, a correction, a preference, a decision. Each is a file with its title, kind, importance, and 5-10 keywords the model writes at the same time (synonyms, abbreviations, Chinese and English names), so later questions in other words still find it. Saving the same title again updates the memory. Files can be read and edited in any editor; the index is rebuilt from them.
+
+Memories are recalled in three tiers:
+
+1. The index (one line per memory) is in the system prompt from the start of a session, so the model knows what exists. It is fixed for the session and stays in the prompt cache.
+2. With each request, the full text of the few memories it is clearly about: BM25 over title, keywords, and content, top 3, and only those covering at least 55% of the request's subject words. Precision first: a wrong memory costs tokens and can mislead, a missing one can be looked up.
+3. `search_memory` for more, with a lower bar (35%) and up to 8 results; the model can also `read_file` a memory file.
+
+The ranking weights and both bars were set on a labelled recall set (`evals/README.md`, experiment 4): relevance decides the order, and importance and recency only break near-ties. `/memory` shows the index; `/memory search|show|delete|stats|path|clear` manage it. Memories from the earlier SQLite store are imported into files once per project.
 
 The system prompt is fully static for a session. Per-request context (date, working directory, recalled memories, skill candidates) is attached to the user message that triggered it and then stays frozen in history, so the prefix cache covers the system prompt, tool definitions, and all earlier turns.
 
