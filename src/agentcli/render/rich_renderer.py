@@ -143,6 +143,10 @@ class RichRenderer:
             self._flush_markdown(title="Assistant Output")
             self._count_tool_call(event)
             self._print_tool_call(event)
+        elif event_type == "snapshot_failed":
+            self.console.print(
+                f"[yellow]本轮改动前的快照没有拍成，/restore 无法撤销这轮修改：{event.get('error')}[/yellow]"
+            )
         elif event_type == "tools_preloaded":
             names = ", ".join(str(name).split("__")[-1] for name in event.get("names") or [])
             self.console.print(f"[dim]预加载工具（Jev 判断）：{names}[/dim]")

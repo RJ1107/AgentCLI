@@ -142,8 +142,13 @@ class Agent:
             runner = self._run_team(message, turn_snapshot)
         else:
             runner = self._run_react(message, turn_snapshot)
+        warned = False
         try:
             async for event in runner:
+                if turn_snapshot.error and not warned:
+                    warned = True
+                    # The edits went ahead without a way back; the user should know.
+                    yield {"type": "snapshot_failed", "error": turn_snapshot.error}
                 yield event
         finally:
             self.last_active_at = time.time()

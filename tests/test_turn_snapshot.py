@@ -54,7 +54,7 @@ def test_read_only_request_takes_no_snapshot(tmp_path, monkeypatch):
 
 def test_first_write_takes_one_snapshot_of_the_original_state(tmp_path, monkeypatch):
     _isolate_home(tmp_path, monkeypatch)
-    (tmp_path / "a.txt").write_text("original\n", encoding="utf-8")
+    (tmp_path / "a.txt").write_bytes(b"original\n")
 
     snapshot = _run(
         tmp_path,
@@ -67,11 +67,13 @@ def test_first_write_takes_one_snapshot_of_the_original_state(tmp_path, monkeypa
 
     records = SnapshotService(tmp_path).list()
     assert len(records) == 1 and records[0].phase == "pre-write"
-    assert (snapshot.record.path / "a.txt").read_text(encoding="utf-8") == "original\n"
-    assert not (snapshot.record.path / "b.txt").exists()
+    service = SnapshotService(tmp_path)
+    assert service.read(snapshot.record, "a.txt") == b"original\n"
+    assert service.read(snapshot.record, "b.txt") is None
     # The fake home (holding the snapshot store) sits inside this project: it must be skipped,
-    # or the snapshot would try to copy itself into itself.
-    assert not (snapshot.record.path / "home").exists()
+    # or the snapshot would store itself.
+    listed = service._git("ls-tree", "-r", "--name-only", snapshot.record.commit).stdout.decode()
+    assert not any(line.startswith("home/") for line in listed.splitlines())
 
 
 def test_denied_write_takes_no_snapshot(tmp_path, monkeypatch):

