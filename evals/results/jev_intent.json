@@ -1,0 +1,443 @@
+{
+ "requests": 69,
+ "rules_confident_share": 0.927536231884058,
+ "rules_confident_accuracy": 0.640625,
+ "alone": {
+  "rules": {
+   "mode_accuracy": 0.6086956521739131,
+   "level_accuracy": 0.36231884057971014,
+   "complex_sent_to_react": 1.0,
+   "simple_sent_to_plan_or_team": 0.0,
+   "confusion": {
+    "react": {
+     "react": 42
+    },
+    "plan": {
+     "react": 15
+    },
+    "team": {
+     "react": 12
+    }
+   }
+  },
+  "jev": {
+   "mode_accuracy": 0.8695652173913043,
+   "level_accuracy": 0.7536231884057971,
+   "complex_sent_to_react": 0.037037037037037035,
+   "simple_sent_to_plan_or_team": 0.0,
+   "confusion": {
+    "react": {
+     "react": 37,
+     "plan": 5
+    },
+    "plan": {
+     "plan": 12,
+     "team": 3
+    },
+    "team": {
+     "team": 11,
+     "react": 1
+    }
+   }
+  },
+  "luna": {
+   "mode_accuracy": 0.9710144927536232,
+   "level_accuracy": 0.9710144927536232,
+   "complex_sent_to_react": 0.037037037037037035,
+   "simple_sent_to_plan_or_team": 0.0,
+   "confusion": {
+    "react": {
+     "react": 42
+    },
+    "plan": {
+     "plan": 14,
+     "team": 1
+    },
+    "team": {
+     "team": 11,
+     "react": 1
+    }
+   }
+  },
+  "deepseek": {
+   "mode_accuracy": 0.9855072463768116,
+   "level_accuracy": 0.9710144927536232,
+   "complex_sent_to_react": 0.0,
+   "simple_sent_to_plan_or_team": 0.0,
+   "confusion": {
+    "react": {
+     "react": 41,
+     "plan": 1
+    },
+    "plan": {
+     "plan": 15
+    },
+    "team": {
+     "team": 12
+    }
+   }
+  }
+ },
+ "chain": {
+  "rules only": {
+   "mode_accuracy": 0.6086956521739131,
+   "level_accuracy": 0.36231884057971014,
+   "complex_sent_to_react": 1.0,
+   "simple_sent_to_plan_or_team": 0.0,
+   "confusion": {
+    "react": {
+     "react": 42
+    },
+    "plan": {
+     "react": 15
+    },
+    "team": {
+     "react": 12
+    }
+   }
+  },
+  "rules + jev": {
+   "mode_accuracy": 0.6521739130434783,
+   "level_accuracy": 0.43478260869565216,
+   "complex_sent_to_react": 0.8518518518518519,
+   "simple_sent_to_plan_or_team": 0.0,
+   "confusion": {
+    "react": {
+     "react": 42
+    },
+    "plan": {
+     "plan": 2,
+     "react": 12,
+     "team": 1
+    },
+    "team": {
+     "react": 11,
+     "team": 1
+    }
+   }
+  },
+  "rules + luna": {
+   "mode_accuracy": 0.6666666666666666,
+   "level_accuracy": 0.43478260869565216,
+   "complex_sent_to_react": 0.8518518518518519,
+   "simple_sent_to_plan_or_team": 0.0,
+   "confusion": {
+    "react": {
+     "react": 42
+    },
+    "plan": {
+     "plan": 3,
+     "react": 12
+    },
+    "team": {
+     "react": 11,
+     "team": 1
+    }
+   }
+  },
+  "rules + deepseek": {
+   "mode_accuracy": 0.6666666666666666,
+   "level_accuracy": 0.43478260869565216,
+   "complex_sent_to_react": 0.8518518518518519,
+   "simple_sent_to_plan_or_team": 0.0,
+   "confusion": {
+    "react": {
+     "react": 42
+    },
+    "plan": {
+     "plan": 3,
+     "react": 12
+    },
+    "team": {
+     "react": 11,
+     "team": 1
+    }
+   }
+  }
+ },
+ "latency": {
+  "jev": {
+   "p50_s": 0.5671101999469101,
+   "p95_s": 0.7010216000489891
+  },
+  "luna": {
+   "p50_s": 2.404391899937764,
+   "p95_s": 3.539552600006573
+  },
+  "deepseek": {
+   "p50_s": 1.6823778999969363,
+   "p95_s": 7.577194100013003
+  }
+ },
+ "cost_usd": {
+  "jev": 0.0,
+  "luna": 0.0040449,
+  "deepseek": 0.006332643415
+ },
+ "disagreements": [
+  {
+   "request": "session 列表现在按创建时间排序，改成按最后更新时间，picker 和 /sessions 都要改",
+   "want": "moderate/react",
+   "rules": "simple/react (0.80)",
+   "jev": "complex/plan",
+   "luna": "moderate/react",
+   "deepseek": "moderate/react"
+  },
+  {
+   "request": "web_fetch 遇到 429 时现在直接报错，加上重试和 Retry-After 支持，再写个测试",
+   "want": "moderate/react",
+   "rules": "simple/react (0.90)",
+   "jev": "complex/plan",
+   "luna": "moderate/react",
+   "deepseek": "moderate/react"
+  },
+  {
+   "request": "the memory index sometimes lists a deleted memory; find why and fix it, with a r",
+   "want": "moderate/react",
+   "rules": "simple/react (0.90)",
+   "jev": "complex/plan",
+   "luna": "moderate/react",
+   "deepseek": "moderate/react"
+  },
+  {
+   "request": "每个工具的错误信息格式不统一，统一成 'Tool X failed: 原因' 这种",
+   "want": "moderate/react",
+   "rules": "simple/react (0.90)",
+   "jev": "simple/react",
+   "luna": "moderate/react",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "MCP 工具列表缓存过期时间现在写死是 1 天，改成可配置并在 /mcp 里显示剩余时间",
+   "want": "moderate/react",
+   "rules": "simple/react (0.90)",
+   "jev": "complex/plan",
+   "luna": "moderate/react",
+   "deepseek": "moderate/react"
+  },
+  {
+   "request": "write a script that converts the old SQLite memory store to the new file layout,",
+   "want": "moderate/react",
+   "rules": "simple/react (0.90)",
+   "jev": "complex/plan",
+   "luna": "moderate/react",
+   "deepseek": "moderate/react"
+  },
+  {
+   "request": "重构整个认证模块",
+   "want": "complex/plan",
+   "rules": "moderate/react (0.50)",
+   "jev": "complex/plan",
+   "luna": "complex/plan",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "把会话存储从 JSON 文件迁移到 SQLite，要兼容旧数据，提供迁移命令，并保证 /resume 等所有命令照常工作",
+   "want": "complex/plan",
+   "rules": "simple/react (0.80)",
+   "jev": "complex/plan",
+   "luna": "complex/plan",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "设计并实现一个插件系统：第三方可以通过 entry point 注册工具，要有版本检查、权限声明和加载失败隔离",
+   "want": "complex/plan",
+   "rules": "moderate/react (0.50)",
+   "jev": "complex/team",
+   "luna": "complex/plan",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "implement a full undo system: every write snapshots the file, /undo restores the",
+   "want": "complex/plan",
+   "rules": "simple/react (0.80)",
+   "jev": "complex/plan",
+   "luna": "complex/plan",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "从零实现一个 LSP 客户端，让 agent 能拿到跳转定义和查找引用的结果",
+   "want": "complex/plan",
+   "rules": "simple/react (0.80)",
+   "jev": "complex/plan",
+   "luna": "complex/plan",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "把 LLM 层从我们自己写的 OpenAI 兼容客户端换成官方 SDK，所有 provider 都要跑通，重试和溢出检测的行为不能变",
+   "want": "complex/plan",
+   "rules": "simple/react (0.80)",
+   "jev": "complex/plan",
+   "luna": "complex/plan",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "我想给 AgentCLI 加上远程运行：\n1. 起一个 HTTP 服务接收任务\n2. 任务排队执行\n3. 结果通过 SSE 推回去\n4. 支持取消\n5. 需要 ",
+   "want": "complex/plan",
+   "rules": "simple/react (0.80)",
+   "jev": "complex/team",
+   "luna": "complex/plan",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "redesign the context manager so the protected zone is measured in turns instead ",
+   "want": "complex/plan",
+   "rules": "simple/react (0.80)",
+   "jev": "complex/plan",
+   "luna": "complex/plan",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "升级到 Python 3.14，把所有不兼容的地方修掉，CI 也要改",
+   "want": "complex/plan",
+   "rules": "simple/react (0.80)",
+   "jev": "complex/plan",
+   "luna": "complex/plan",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "给整个项目加上类型检查（mypy strict），修掉所有报错",
+   "want": "complex/plan",
+   "rules": "moderate/react (0.50)",
+   "jev": "complex/plan",
+   "luna": "complex/plan",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "the orchestrator should support workers on different models; design the config, ",
+   "want": "complex/plan",
+   "rules": "simple/react (0.90)",
+   "jev": "complex/plan",
+   "luna": "complex/plan",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "实现记忆的冲突检测：新记忆写入前找相似旧记忆，让模型决定新增、更新还是作废，要有版本和回滚",
+   "want": "complex/plan",
+   "rules": "simple/react (0.90)",
+   "jev": "complex/plan",
+   "luna": "complex/plan",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "把 bash 沙箱从 Docker 换成可插拔后端，支持 Docker 和 Windows Sandbox 两种",
+   "want": "complex/plan",
+   "rules": "simple/react (0.90)",
+   "jev": "complex/plan",
+   "luna": "complex/plan",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "逐个检查每个工具的权限声明是否正确，发现问题就修，修完一个再看下一个",
+   "want": "complex/plan",
+   "rules": "simple/react (0.90)",
+   "jev": "complex/plan",
+   "luna": "complex/plan",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "build a web UI for AgentCLI: chat view, tool approval dialog, session list, stre",
+   "want": "complex/plan",
+   "rules": "simple/react (0.80)",
+   "jev": "complex/team",
+   "luna": "complex/team",
+   "deepseek": "complex/plan"
+  },
+  {
+   "request": "分别给 tools、memory、session、sandbox 四个模块补齐单元测试，覆盖率都到 90%",
+   "want": "complex/team",
+   "rules": "simple/react (0.80)",
+   "jev": "complex/team",
+   "luna": "complex/team",
+   "deepseek": "complex/team"
+  },
+  {
+   "request": "把 docs 目录下每个 md 文件分别翻译成英文",
+   "want": "complex/team",
+   "rules": "simple/react (0.80)",
+   "jev": "complex/team",
+   "luna": "complex/team",
+   "deepseek": "complex/team"
+  },
+  {
+   "request": "review every module under src/agentcli for unhandled exceptions and write a repo",
+   "want": "complex/team",
+   "rules": "simple/react (0.80)",
+   "jev": "complex/team",
+   "luna": "complex/team",
+   "deepseek": "complex/team"
+  },
+  {
+   "request": "同时做三件事：修 web_fetch 的编码问题、给 grep 加 --type 参数、更新 README 的安装说明",
+   "want": "complex/team",
+   "rules": "simple/react (0.80)",
+   "jev": "complex/team",
+   "luna": "complex/team",
+   "deepseek": "complex/team"
+  },
+  {
+   "request": "为 OpenAI、Anthropic、Gemini、DeepSeek 四个 provider 各写一个集成测试",
+   "want": "complex/team",
+   "rules": "simple/react (0.90)",
+   "jev": "complex/team",
+   "luna": "moderate/react",
+   "deepseek": "complex/team"
+  },
+  {
+   "request": "benchmark the five summary models on the retention set, each in its own run, and",
+   "want": "complex/team",
+   "rules": "simple/react (0.90)",
+   "jev": "complex/team",
+   "luna": "complex/team",
+   "deepseek": "complex/team"
+  },
+  {
+   "request": "把项目里所有 print 调试语句分别按模块清理掉，每个模块单独提交",
+   "want": "complex/team",
+   "rules": "moderate/react (0.50)",
+   "jev": "complex/team",
+   "luna": "complex/team",
+   "deepseek": "complex/team"
+  },
+  {
+   "request": "并行地给 evals 下的四个实验脚本各加一个 --dry-run 选项",
+   "want": "complex/team",
+   "rules": "simple/react (0.80)",
+   "jev": "simple/react",
+   "luna": "complex/team",
+   "deepseek": "complex/team"
+  },
+  {
+   "request": "audit the three MCP servers we ship with (chrome, filesystem, git) for path esca",
+   "want": "complex/team",
+   "rules": "simple/react (0.90)",
+   "jev": "complex/team",
+   "luna": "complex/team",
+   "deepseek": "complex/team"
+  },
+  {
+   "request": "给每个内置工具写一份使用文档，放到 docs/tools/ 下，一个工具一个文件",
+   "want": "complex/team",
+   "rules": "simple/react (0.90)",
+   "jev": "complex/team",
+   "luna": "complex/team",
+   "deepseek": "complex/team"
+  },
+  {
+   "request": "迁移 4 个旧实验的结果格式到新 schema：context_retention、workers、models、memory_recall，互不相关",
+   "want": "complex/team",
+   "rules": "simple/react (0.80)",
+   "jev": "complex/team",
+   "luna": "complex/team",
+   "deepseek": "complex/team"
+  },
+  {
+   "request": "port the CLI's colour theme, its key bindings, and its status line to the new re",
+   "want": "complex/team",
+   "rules": "simple/react (0.90)",
+   "jev": "complex/team",
+   "luna": "complex/team",
+   "deepseek": "complex/team"
+  }
+ ]
+}

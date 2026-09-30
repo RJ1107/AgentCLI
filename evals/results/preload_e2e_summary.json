@@ -1,0 +1,47 @@
+{
+ "browser preload=off": {
+  "runs": 12,
+  "success": 1.0,
+  "model_calls": 7.583333333333333,
+  "input_tokens": 19931.5,
+  "cost": 0.00073535,
+  "seconds_median": 22.54,
+  "seconds_mean": 22.01,
+  "load_tools_calls": 1.5833333333333333,
+  "preloaded_runs": 0.0
+ },
+ "browser preload=on": {
+  "runs": 12,
+  "success": 1.0,
+  "model_calls": 6.25,
+  "input_tokens": 21420.916666666668,
+  "cost": 0.0008021558333333334,
+  "seconds_median": 19.455,
+  "seconds_mean": 24.014166666666664,
+  "load_tools_calls": 0.8333333333333334,
+  "preloaded_runs": 0.8333333333333334
+ },
+ "local preload=off": {
+  "runs": 6,
+  "success": 1.0,
+  "model_calls": 1.6666666666666667,
+  "input_tokens": 2921,
+  "cost": 5.5990000000000004e-05,
+  "seconds_median": 4.455,
+  "seconds_mean": 2162.955,
+  "load_tools_calls": 0,
+  "preloaded_runs": 0.0
+ },
+ "local preload=on": {
+  "runs": 6,
+  "success": 1.0,
+  "model_calls": 1.6666666666666667,
+  "input_tokens": 2921,
+  "cost": 8.217833333333335e-05,
+  "seconds_median": 4.029999999999999,
+  "seconds_mean": 3.5716666666666668,
+  "load_tools_calls": 0,
+  "preloaded_runs": 0.0
+ },
+ "total_cost": 0.01927908
+}

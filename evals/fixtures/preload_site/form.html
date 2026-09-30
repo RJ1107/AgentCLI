@@ -1,0 +1,9 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Form</title></head>
+<body>
+<form onsubmit="event.preventDefault(); document.getElementById('msg').textContent='hello ' + document.getElementById('name').value;">
+<label for="name">name</label> <input id="name" name="name">
+<button type="submit">Submit</button>
+</form>
+<p id="msg"></p>
+</body></html>

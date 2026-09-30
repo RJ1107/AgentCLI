@@ -1,0 +1,442 @@
+{
+ "requests": 54,
+ "options": 48,
+ "methods": {
+  "jev choice": {
+   "top1": 1.0,
+   "hit@3": 1.0,
+   "group_accuracy": 1.0,
+   "browser_precision": 1.0,
+   "browser_recall": 1.0,
+   "p50_s": 0.24016450007911772,
+   "p95_s": 0.29288840002845973,
+   "cost_usd": 0.003518508
+  },
+  "jev nouls": {
+   "top1": 0.8333333333333334,
+   "hit@3": 0.8888888888888888,
+   "group_accuracy": 0.8518518518518519,
+   "browser_precision": 0.9230769230769231,
+   "browser_recall": 1.0,
+   "p50_s": 0.24793790001422167,
+   "p95_s": 0.2937496999511495,
+   "cost_usd": 0.00757596
+  },
+  "luna": {
+   "top1": 0.8148148148148148,
+   "hit@3": 0.9629629629629629,
+   "group_accuracy": 0.9259259259259259,
+   "browser_precision": 1.0,
+   "browser_recall": 1.0,
+   "p50_s": 3.230277399998158,
+   "p95_s": 6.190649199998006,
+   "cost_usd": 0.0091737
+  }
+ },
+ "misses": [
+  {
+   "request": "有哪些测试文件是测 memory 的",
+   "want": [
+    "glob",
+    "grep",
+    "list_dir"
+   ],
+   "jev choice": [
+    "grep",
+    "glob",
+    "search_code"
+   ],
+   "jev nouls": [
+    "search_code",
+    "grep",
+    "bash"
+   ],
+   "luna": [
+    "grep",
+    "glob",
+    "search_code"
+   ]
+  },
+  {
+   "request": "读一下 README 的安装部分",
+   "want": [
+    "read_file"
+   ],
+   "jev choice": [
+    "read_file",
+    "list_dir",
+    "glob"
+   ],
+   "jev nouls": [
+    "read_file",
+    "bash",
+    "list_dir"
+   ],
+   "luna": [
+    "list_dir",
+    "read_file",
+    "grep"
+   ]
+  },
+  {
+   "request": "新建一个 docs/jev.md，写上这次实验的结论",
+   "want": [
+    "write_file"
+   ],
+   "jev choice": [
+    "write_file",
+    "list_dir",
+    "search_memory"
+   ],
+   "jev nouls": [
+    "write_file",
+    "bash",
+    "list_dir"
+   ],
+   "luna": [
+    "directory_tree",
+    "list_dir",
+    "grep"
+   ]
+  },
+  {
+   "request": "创建一个空的 tests/test_jev.py",
+   "want": [
+    "write_file"
+   ],
+   "jev choice": [
+    "write_file",
+    "bash",
+    "list_dir"
+   ],
+   "jev nouls": [
+    "bash",
+    "write_file",
+    "list_dir"
+   ],
+   "luna": [
+    "write_file",
+    "bash",
+    "list_dir"
+   ]
+  },
+  {
+   "request": "跑一下全部测试",
+   "want": [
+    "bash"
+   ],
+   "jev choice": [
+    "bash",
+    "directory_tree",
+    "list_dir"
+   ],
+   "jev nouls": [
+    "bash",
+    "list_dir",
+    "glob"
+   ],
+   "luna": [
+    "list_dir",
+    "read_file",
+    "bash"
+   ]
+  },
+  {
+   "request": "装一下 ruff 然后格式化整个项目",
+   "want": [
+    "bash"
+   ],
+   "jev choice": [
+    "bash",
+    "directory_tree",
+    "list_console_messages"
+   ],
+   "jev nouls": [
+    "bash",
+    "list_dir",
+    "directory_tree"
+   ],
+   "luna": [
+    "list_dir",
+    "directory_tree",
+    "read_file"
+   ]
+  },
+  {
+   "request": "run the memory recall eval script",
+   "want": [
+    "bash"
+   ],
+   "jev choice": [
+    "bash",
+    "glob",
+    "search_code"
+   ],
+   "jev nouls": [
+    "bash",
+    "search_code",
+    "list_dir"
+   ],
+   "luna": [
+    "list_dir",
+    "glob",
+    "bash"
+   ]
+  },
+  {
+   "request": "把刚才这套发布流程保存成一个 skill",
+   "want": [
+    "save_skill"
+   ],
+   "jev choice": [
+    "save_skill",
+    "none",
+    "take_snapshot"
+   ],
+   "jev nouls": [
+    "save_memory",
+    "save_skill",
+    "take_snapshot"
+   ],
+   "luna": [
+    "save_skill",
+    "load_skill",
+    "none"
+   ]
+  },
+  {
+   "request": "点一下页面上的登录按钮",
+   "want": [
+    "take_snapshot",
+    "click"
+   ],
+   "jev choice": [
+    "click",
+    "take_snapshot",
+    "select_page"
+   ],
+   "jev nouls": [
+    "click",
+    "take_snapshot",
+    "emulate"
+   ],
+   "luna": [
+    "list_pages",
+    "take_snapshot",
+    "click"
+   ]
+  },
+  {
+   "request": "看看这个页面发了哪些接口请求",
+   "want": [
+    "list_network_requests"
+   ],
+   "jev choice": [
+    "list_network_requests",
+    "select_page",
+    "list_pages"
+   ],
+   "jev nouls": [
+    "list_network_requests",
+    "select_page",
+    "performance_start_trace"
+   ],
+   "luna": [
+    "list_pages",
+    "select_page",
+    "list_network_requests"
+   ]
+  },
+  {
+   "request": "check why the page is slow to load, record a performance tra",
+   "want": [
+    "performance_start_trace"
+   ],
+   "jev choice": [
+    "performance_start_trace",
+    "select_page",
+    "list_pages"
+   ],
+   "jev nouls": [
+    "performance_start_trace",
+    "select_page",
+    "list_pages"
+   ],
+   "luna": [
+    "list_pages",
+    "select_page",
+    "performance_start_trace"
+   ]
+  },
+  {
+   "request": "把窗口调成手机尺寸看看布局",
+   "want": [
+    "resize_page",
+    "emulate"
+   ],
+   "jev choice": [
+    "resize_page",
+    "select_page",
+    "emulate"
+   ],
+   "jev nouls": [
+    "resize_page",
+    "emulate",
+    "select_page"
+   ],
+   "luna": [
+    "list_pages",
+    "select_page",
+    "resize_page"
+   ]
+  },
+  {
+   "request": "fill in the signup form with test data",
+   "want": [
+    "take_snapshot",
+    "fill_form"
+   ],
+   "jev choice": [
+    "fill_form",
+    "navigate_page",
+    "select_page"
+   ],
+   "jev nouls": [
+    "take_snapshot",
+    "fill_form",
+    "search_code"
+   ],
+   "luna": [
+    "list_pages",
+    "take_snapshot",
+    "fill_form"
+   ]
+  },
+  {
+   "request": "解释一下什么是 RRF",
+   "want": [
+    "none"
+   ],
+   "jev choice": [
+    "none",
+    "web_search",
+    "handle_dialog"
+   ],
+   "jev nouls": [
+    "web_search",
+    "web_fetch",
+    "search_code"
+   ],
+   "luna": [
+    "none",
+    "web_search",
+    "search_code"
+   ]
+  },
+  {
+   "request": "SSE 和 WebSocket 有什么区别",
+   "want": [
+    "none"
+   ],
+   "jev choice": [
+    "none",
+    "click",
+    "edit_file"
+   ],
+   "jev nouls": [
+    "web_search",
+    "search_code",
+    "search_memory"
+   ],
+   "luna": [
+    "none",
+    "web_search",
+    "web_fetch"
+   ]
+  },
+  {
+   "request": "谢谢，今天就到这",
+   "want": [
+    "none"
+   ],
+   "jev choice": [
+    "none",
+    "close_page",
+    "list_network_requests"
+   ],
+   "jev nouls": [
+    "close_page",
+    "performance_stop_trace",
+    "search_memory"
+   ],
+   "luna": [
+    "none",
+    "save_memory",
+    "search_memory"
+   ]
+  },
+  {
+   "request": "what's the difference between precision and recall?",
+   "want": [
+    "none"
+   ],
+   "jev choice": [
+    "none",
+    "edit_file",
+    "list_dir"
+   ],
+   "jev nouls": [
+    "search_code",
+    "search_memory",
+    "select_page"
+   ],
+   "luna": [
+    "none",
+    "web_search",
+    "read_file"
+   ]
+  },
+  {
+   "request": "给我写一个快速排序的 Python 示例",
+   "want": [
+    "none"
+   ],
+   "jev choice": [
+    "none",
+    "write_file",
+    "edit_file"
+   ],
+   "jev nouls": [
+    "write_file",
+    "search_code",
+    "type_text"
+   ],
+   "luna": [
+    "none",
+    "write_file",
+    "bash"
+   ]
+  },
+  {
+   "request": "你觉得记忆检索该不该用向量库",
+   "want": [
+    "none"
+   ],
+   "jev choice": [
+    "none",
+    "search_memory",
+    "save_memory"
+   ],
+   "jev nouls": [
+    "search_memory",
+    "web_search",
+    "save_memory"
+   ],
+   "luna": [
+    "none",
+    "search_memory",
+    "web_search"
+   ]
+  }
+ ]
+}

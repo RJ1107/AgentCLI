@@ -1,0 +1,347 @@
+{
+"这个项目用的是什么 web 框架？": {
+"trivial": 0.91,
+"needs_plan": 0.14,
+"parallel": 0.43
+},
+"pyproject.toml 里的 requires-python 是多少": {
+"trivial": 0.84,
+"needs_plan": 0.14,
+"parallel": 0.29
+},
+"解释一下 src/agentcli/agent/query.py 里 _arguments_complete 是干什么的": {
+"trivial": 0.73,
+"needs_plan": 0.12,
+"parallel": 0.23
+},
+"为什么 pytest 说找不到 conftest 里的 fixture？": {
+"trivial": 0.74,
+"needs_plan": 0.24,
+"parallel": 0.3
+},
+"git 怎么撤销上一次 commit 但保留改动": {
+"trivial": 0.89,
+"needs_plan": 0.13,
+"parallel": 0.18
+},
+"整个项目有多少个测试文件？": {
+"trivial": 0.81,
+"needs_plan": 0.3,
+"parallel": 0.42
+},
+"What does the --read-only flag of mcp serve do?": {
+"trivial": 0.8,
+"needs_plan": 0.09,
+"parallel": 0.34
+},
+"why is the sandbox image 411 MB?": {
+"trivial": 0.8,
+"needs_plan": 0.18,
+"parallel": 0.32
+},
+"这个架构图里 orchestrator 和 worker 是什么关系": {
+"trivial": 0.86,
+"needs_plan": 0.13,
+"parallel": 0.62
+},
+"README 里写的默认模型是哪个": {
+"trivial": 0.86,
+"needs_plan": 0.14,
+"parallel": 0.35
+},
+"运行测试报了下面这个错，是什么原因？\n\nTraceback (most recent call last):\n  File \"tests/test_sessions.py\", line 88, in test_resume_latest\n    session = store.latest(project)\n  File \"src/agentcli/session/store.py\", line 142, in latest\n    metas = sorted(self._metas(project), key=lambda m: m.updated, reverse=True)\n  File \"src/agentcli/session/store.py\", line 97, in _metas\n    data = json.loads(path.read_text(encoding=\"utf-8\"))\njson.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n然后第二次跑又好了，我没改任何东西。": {
+"trivial": 0.77,
+"needs_plan": 0.12,
+"parallel": 0.17
+},
+"how do I set AGENTCLI_HOME on Windows": {
+"trivial": 0.9,
+"needs_plan": 0.24,
+"parallel": 0.23
+},
+"所有的 memory 都存在哪个目录": {
+"trivial": 0.72,
+"needs_plan": 0.14,
+"parallel": 0.35
+},
+"什么是 RRF": {
+"trivial": 0.79,
+"needs_plan": 0.15,
+"parallel": 0.39
+},
+"把 README 里的版本号改成 1.2.0": {
+"trivial": 0.94,
+"needs_plan": 0.09,
+"parallel": 0.13
+},
+"给 DomainPolicy.remember 加一行注释说明为什么排序": {
+"trivial": 0.9,
+"needs_plan": 0.09,
+"parallel": 0.16
+},
+"把 max_concurrent_read 的默认值从 4 改成 6": {
+"trivial": 0.95,
+"needs_plan": 0.14,
+"parallel": 0.21
+},
+"rename the helper _clip_output to _truncate_output and update its one caller": {
+"trivial": 0.93,
+"needs_plan": 0.15,
+"parallel": 0.11
+},
+"先把 .gitignore 里加上 evals/_home/，然后提交": {
+"trivial": 0.94,
+"needs_plan": 0.23,
+"parallel": 0.19
+},
+"fix the typo 'recieve' in docs/usage.md": {
+"trivial": 0.94,
+"needs_plan": 0.04,
+"parallel": 0.12
+},
+"删掉 config.py 里没用到的 import": {
+"trivial": 0.88,
+"needs_plan": 0.14,
+"parallel": 0.18
+},
+"在 pricing.py 里把 glm-5.3 的输入价格改成 0.6": {
+"trivial": 0.93,
+"needs_plan": 0.09,
+"parallel": 0.12
+},
+"跑一下 tests/test_memory.py 看看过不过": {
+"trivial": 0.87,
+"needs_plan": 0.16,
+"parallel": 0.22
+},
+"add a --version flag that prints agentcli.__version__": {
+"trivial": 0.91,
+"needs_plan": 0.2,
+"parallel": 0.18
+},
+"把这个函数的返回类型标注补上": {
+"trivial": 0.8,
+"needs_plan": 0.15,
+"parallel": 0.21
+},
+"给 web_fetch 的默认白名单加上 docs.python.org": {
+"trivial": 0.91,
+"needs_plan": 0.23,
+"parallel": 0.17
+},
+"给 /sessions 命令加一个 --limit 参数，并补上对应的测试": {
+"trivial": 0.76,
+"needs_plan": 0.62,
+"parallel": 0.34
+},
+"session 列表现在按创建时间排序，改成按最后更新时间，picker 和 /sessions 都要改": {
+"trivial": 0.7,
+"needs_plan": 0.82,
+"parallel": 0.59
+},
+"web_fetch 遇到 429 时现在直接报错，加上重试和 Retry-After 支持，再写个测试": {
+"trivial": 0.61,
+"needs_plan": 0.81,
+"parallel": 0.37
+},
+"the memory index sometimes lists a deleted memory; find why and fix it, with a regression test": {
+"trivial": 0.43,
+"needs_plan": 0.82,
+"parallel": 0.26
+},
+"把 save_memory 的 keywords 参数改成可选，没传的时候从标题里自动生成几个": {
+"trivial": 0.88,
+"needs_plan": 0.46,
+"parallel": 0.19
+},
+"排查一下为什么 /resume 选中会话后提示符没有刷新，修掉": {
+"trivial": 0.65,
+"needs_plan": 0.51,
+"parallel": 0.22
+},
+"给沙箱加一个 /sandbox status 子命令，显示镜像是否存在、容器是否在跑": {
+"trivial": 0.86,
+"needs_plan": 0.49,
+"parallel": 0.26
+},
+"make the approval prompt show the full path for write_file and edit_file, and test it": {
+"trivial": 0.77,
+"needs_plan": 0.62,
+"parallel": 0.32
+},
+"把 L3 截断的头尾比例做成配置项，默认还是 60/40，文档也更新一下": {
+"trivial": 0.8,
+"needs_plan": 0.67,
+"parallel": 0.57
+},
+"统计每次运行调用了几个 skill，加到运行结束的那行总结里": {
+"trivial": 0.72,
+"needs_plan": 0.58,
+"parallel": 0.24
+},
+"先读一下 context/manager.py，然后给 _plan 补几个边界情况的测试": {
+"trivial": 0.66,
+"needs_plan": 0.74,
+"parallel": 0.23
+},
+"the retry delay ignores Retry-After when it is an HTTP date; parse both forms": {
+"trivial": 0.77,
+"needs_plan": 0.38,
+"parallel": 0.22
+},
+"每个工具的错误信息格式不统一，统一成 'Tool X failed: 原因' 这种": {
+"trivial": 0.77,
+"needs_plan": 0.69,
+"parallel": 0.55
+},
+"加一个 /cost 命令，显示当前会话累计花费": {
+"trivial": 0.84,
+"needs_plan": 0.42,
+"parallel": 0.23
+},
+"MCP 工具列表缓存过期时间现在写死是 1 天，改成可配置并在 /mcp 里显示剩余时间": {
+"trivial": 0.52,
+"needs_plan": 0.86,
+"parallel": 0.48
+},
+"write a script that converts the old SQLite memory store to the new file layout, with a dry-run flag": {
+"trivial": 0.34,
+"needs_plan": 0.79,
+"parallel": 0.31
+},
+"重构整个认证模块": {
+"trivial": 0.18,
+"needs_plan": 0.95,
+"parallel": 0.48
+},
+"把会话存储从 JSON 文件迁移到 SQLite，要兼容旧数据，提供迁移命令，并保证 /resume 等所有命令照常工作": {
+"trivial": 0.28,
+"needs_plan": 0.93,
+"parallel": 0.41
+},
+"设计并实现一个插件系统：第三方可以通过 entry point 注册工具，要有版本检查、权限声明和加载失败隔离": {
+"trivial": 0.11,
+"needs_plan": 0.96,
+"parallel": 0.65
+},
+"implement a full undo system: every write snapshots the file, /undo restores the last turn, /undo N goes back N turns, and it survives a restart": {
+"trivial": 0.08,
+"needs_plan": 0.94,
+"parallel": 0.31
+},
+"从零实现一个 LSP 客户端，让 agent 能拿到跳转定义和查找引用的结果": {
+"trivial": 0.15,
+"needs_plan": 0.94,
+"parallel": 0.43
+},
+"把 LLM 层从我们自己写的 OpenAI 兼容客户端换成官方 SDK，所有 provider 都要跑通，重试和溢出检测的行为不能变": {
+"trivial": 0.24,
+"needs_plan": 0.93,
+"parallel": 0.47
+},
+"我想给 AgentCLI 加上远程运行：\n1. 起一个 HTTP 服务接收任务\n2. 任务排队执行\n3. 结果通过 SSE 推回去\n4. 支持取消\n5. 需要 token 鉴权": {
+"trivial": 0.13,
+"needs_plan": 0.96,
+"parallel": 0.6
+},
+"redesign the context manager so the protected zone is measured in turns instead of tokens, and rerun the retention experiment": {
+"trivial": 0.52,
+"needs_plan": 0.93,
+"parallel": 0.35
+},
+"升级到 Python 3.14，把所有不兼容的地方修掉，CI 也要改": {
+"trivial": 0.17,
+"needs_plan": 0.93,
+"parallel": 0.48
+},
+"给整个项目加上类型检查（mypy strict），修掉所有报错": {
+"trivial": 0.19,
+"needs_plan": 0.92,
+"parallel": 0.45
+},
+"the orchestrator should support workers on different models; design the config, change the planner prompt, and add evals": {
+"trivial": 0.18,
+"needs_plan": 0.96,
+"parallel": 0.59
+},
+"实现记忆的冲突检测：新记忆写入前找相似旧记忆，让模型决定新增、更新还是作废，要有版本和回滚": {
+"trivial": 0.24,
+"needs_plan": 0.94,
+"parallel": 0.45
+},
+"把 bash 沙箱从 Docker 换成可插拔后端，支持 Docker 和 Windows Sandbox 两种": {
+"trivial": 0.38,
+"needs_plan": 0.92,
+"parallel": 0.57
+},
+"逐个检查每个工具的权限声明是否正确，发现问题就修，修完一个再看下一个": {
+"trivial": 0.39,
+"needs_plan": 0.74,
+"parallel": 0.58
+},
+"build a web UI for AgentCLI: chat view, tool approval dialog, session list, streamed output": {
+"trivial": 0.17,
+"needs_plan": 0.93,
+"parallel": 0.7
+},
+"分别给 tools、memory、session、sandbox 四个模块补齐单元测试，覆盖率都到 90%": {
+"trivial": 0.18,
+"needs_plan": 0.94,
+"parallel": 0.86
+},
+"把 docs 目录下每个 md 文件分别翻译成英文": {
+"trivial": 0.55,
+"needs_plan": 0.85,
+"parallel": 0.93
+},
+"review every module under src/agentcli for unhandled exceptions and write a report per module": {
+"trivial": 0.14,
+"needs_plan": 0.95,
+"parallel": 0.83
+},
+"同时做三件事：修 web_fetch 的编码问题、给 grep 加 --type 参数、更新 README 的安装说明": {
+"trivial": 0.15,
+"needs_plan": 0.91,
+"parallel": 0.83
+},
+"为 OpenAI、Anthropic、Gemini、DeepSeek 四个 provider 各写一个集成测试": {
+"trivial": 0.42,
+"needs_plan": 0.89,
+"parallel": 0.92
+},
+"benchmark the five summary models on the retention set, each in its own run, and compare": {
+"trivial": 0.48,
+"needs_plan": 0.87,
+"parallel": 0.86
+},
+"把项目里所有 print 调试语句分别按模块清理掉，每个模块单独提交": {
+"trivial": 0.38,
+"needs_plan": 0.92,
+"parallel": 0.82
+},
+"并行地给 evals 下的四个实验脚本各加一个 --dry-run 选项": {
+"trivial": 0.83,
+"needs_plan": 0.5,
+"parallel": 0.96
+},
+"audit the three MCP servers we ship with (chrome, filesystem, git) for path escapes, one report each": {
+"trivial": 0.34,
+"needs_plan": 0.94,
+"parallel": 0.91
+},
+"给每个内置工具写一份使用文档，放到 docs/tools/ 下，一个工具一个文件": {
+"trivial": 0.45,
+"needs_plan": 0.92,
+"parallel": 0.87
+},
+"迁移 4 个旧实验的结果格式到新 schema：context_retention、workers、models、memory_recall，互不相关": {
+"trivial": 0.47,
+"needs_plan": 0.84,
+"parallel": 0.93
+},
+"port the CLI's colour theme, its key bindings, and its status line to the new renderer; the three are independent": {
+"trivial": 0.27,
+"needs_plan": 0.91,
+"parallel": 0.97
+}
+}

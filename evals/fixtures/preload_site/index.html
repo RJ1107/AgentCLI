@@ -1,0 +1,12 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>FinMate Lab</title></head>
+<body>
+<h1>Lab page</h1>
+<div id="secret" data-code="k9x">hidden</div>
+<button id="load" onclick="document.getElementById('out').textContent='loaded-7731'">Load</button>
+<p id="out"></p>
+<script>
+console.error("quota exceeded: 42");
+fetch("data.json").then(r => r.json()).then(d => { document.title = document.title; });
+</script>
+</body></html>

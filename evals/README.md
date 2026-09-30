@@ -17,6 +17,10 @@ of success rates.
 | `coding_tasks.py` | Experiments 2 and 3: coding tasks graded by their tests |
 | `make_task_fixtures.py`, `make_hard_fixture.py` | Write the task fixtures |
 | `memory_recall.py`, `memory_dataset.py` | Experiment 4: long-term memory recall |
+| `jev_recall.py` | Experiment 5: a Jev relevance check on the recall shortlist |
+| `jev_intent.py`, `jev_intent_tune.py`, `intent_dataset.py` | Experiment 6: classifiers for react, /plan, or /team |
+| `jev_tools.py`, `tool_dataset.py` | Experiment 7: which tool a request calls for |
+| `preload_e2e.py`, `fixtures/preload_site/` | Experiment 8: preloading deferred tools, end to end |
 | `report.py` | Tables from `results/*.jsonl` |
 | `spend.py` | OpenRouter spend so far, for budgeting |
 
@@ -170,6 +174,93 @@ What the model is handed with each request (tier 2):
   a sweep from 0 to 0.8. Tier 2 then recalls 56% of relevant memories itself; the index in
   the system prompt and `search_memory` (79% at its bar) cover the rest.
 - The labels are mine and were spot-checked by a second person, who changed none.
+
+## Results (2026-09-30): Jev
+
+[Jev](https://docs.typesafe.ai) is TypeSafe AI's decision model: it answers typed questions
+(yes/no, one of several options) with probabilities, in about a quarter of a second, at
+$0.042 per million input tokens, and writes no text. Answers are cached in `fixtures/`, so
+the tables below reproduce for free. About $0.06 of OpenRouter usage for the comparisons.
+
+### Experiment 5: Jev on the recall shortlist
+
+Same data as experiment 4. BM25 shortlists 15 (they hold every relevant memory), then each
+policy picks at most 3. Every threshold, the coverage gate included, is chosen on one half of
+the questions and scored on the other (two folds).
+
+| policy | precision | recall | F0.5 | unrelated given a memory | added p50 / p95 | per request |
+|---|---|---|---|---|---|---|
+| coverage >= gate (experiment 4) | 90.8% | 56.2% | 0.81 | 5% | 0 | 0 |
+| Jev, one request per memory | 100% | 83.8% | 0.96 | 0% | 0.50 / 0.69 s | $0.0002 |
+| **Jev, one request for the shortlist** | **98.1%** | **97.1%** | **0.98** | **0%** | **0.24 / 0.31 s** | **$0.00007** |
+| GPT-6 Luna scoring the shortlist | 96.3% | 98.1% | 0.97 | 15% | 3.0 / 4.1 s | $0.00013 |
+
+- One request with the whole shortlist beats one per memory: alone, each memory needed a
+  0.95 bar to keep precision, which cost recall.
+- Thresholds from 0.8 to 0.9 score the same (F0.5 0.98); the default is 0.85.
+- The bar set beforehand was p95 <= 0.30 s; it came in at 0.31 s, so recall falls back to
+  the coverage gate after 0.8 s.
+
+### Experiment 6: classifiers for react, /plan, or /team
+
+69 requests labelled by hand (`intent_dataset.py`), several written to trip keyword rules:
+short but large ("重构整个认证模块"), long but simple (a pasted traceback), scope words in a
+plain question.
+
+| classifier, on every request | right mode | p50 / p95 | cost for 69 |
+|---|---|---|---|
+| rules | 61% | 0 | 0 |
+| Jev (three yes/no questions) | 87% (83% with thresholds tuned by two folds) | 0.57 / 0.70 s | ~0 |
+| GPT-6 Luna | 97% | 2.4 / 3.5 s | $0.004 |
+| DeepSeek V4.1 Flash | 99% | 1.7 / 7.6 s | $0.006 |
+
+The rules were confident on 93% of requests and wrong on 36% of those: every large request
+was called simple, so no classifier ever saw it, and any chain scored 61-67%. They now settle
+only plain short questions (14% of requests, all right), and rules plus the model score 97%.
+Jev over-escalated moderate requests to /plan and mixed up /plan and /team, so it is not in
+the default chain.
+
+### Experiment 7: which tool a request calls for
+
+54 requests, each labelled with the tools that would be right to call first, over 48
+options: the 17 built-ins, the 30 Chrome DevTools tools, and "none".
+
+| method | best guess right | right in top 3 | tells browser from not | p50 / p95 |
+|---|---|---|---|---|
+| **Jev, one Choice over 48 options** | **100%** | **100%** | **12/12, no false alarm** | **0.24 / 0.29 s** |
+| Jev, one yes/no per option | 83% | 89% | 12/12, 1 false alarm | 0.25 / 0.29 s |
+| GPT-6 Luna naming its top three | 81% | 96% | 12/12 | 3.2 / 6.2 s |
+
+The requests state their intent plainly, and Luna's "misses" were mostly a reasonable look
+around first (`list_dir` before running the tests), so this measures telling the kind of tool
+from one sentence, not the exact first call. A Choice picks the one best tool well but ranks
+the rest poorly; the set of tools a task needs is asked as one yes/no per tool instead.
+
+### Experiment 8: preloading deferred tools, end to end
+
+A real agent (GPT-6 Luna) with the Chrome DevTools server (headless, deferred) on a local test
+site: 6 browser tasks (title, console error, click, network request, form, a script value)
+and 3 tasks that need no browser, with preloading on and off, twice, alternating which runs
+first. Browser tasks, 12 runs each:
+
+| | off | on |
+|---|---|---|
+| success | 100% | 100% |
+| model calls | 7.58 | **6.25** |
+| load_tools calls | 1.58 | 0.83 |
+| median time | 22.5 s | 19.5 s |
+| input tokens | 19.9k | 21.4k |
+| cost per task | $0.00074 | $0.00080 |
+
+- Fewer calls in 9 of 12 pairs, the same in 2, more in 1. Jev asked for the browser in 10 of
+  12; twice it judged that web_fetch could read a page title.
+- No tool was preloaded for the 6 runs without a browser task.
+- The saving is a round trip, not money: preloaded definitions ride along on every later
+  call. Times vary from 13 to 40 s per task, too much to call it faster from 12 pairs. So
+  preloading is off by default. (One no-browser run took 3.6 h of wall time while the machine
+  slept; it is left out of the times.)
+- Without being told the tools were already loaded, the model called `load_tools` for them
+  anyway; the request's context now says so.
 
 ### Defects the experiments found
 

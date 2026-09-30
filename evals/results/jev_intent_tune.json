@@ -1,0 +1,38 @@
+{
+ "requests": 69,
+ "jev_current_thresholds": 0.855072463768116,
+ "jev_tuned_cross_validated": 0.8260869565217391,
+ "jev_tuned_thresholds": [
+  [
+   0.75,
+   0.75
+  ],
+  [
+   0.85,
+   0.5
+  ]
+ ],
+ "jev_tuned_confusion": {
+  "react": {
+   "react": 38,
+   "plan": 4
+  },
+  "plan": {
+   "plan": 9,
+   "team": 5,
+   "react": 1
+  },
+  "team": {
+   "team": 10,
+   "react": 2
+  }
+ },
+ "narrow_rules_share": 0.14492753623188406,
+ "narrow_rules_accuracy": 1.0,
+ "chains": {
+  "narrow rules + luna": 0.9710144927536232,
+  "narrow rules + deepseek": 0.9855072463768116,
+  "narrow rules + jev (tuned, cross-validated)": 0.8260869565217391
+ },
+ "old_rules_alone": 0.6086956521739131
+}

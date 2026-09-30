@@ -1,0 +1,1313 @@
+{
+"jev|这个项目用的是什么 web 框架？": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.9,
+"seconds": 0.4999931000638753,
+"cost": 0.0
+},
+"luna|这个项目用的是什么 web 框架？": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.7380700000794604,
+"cost": 3.92e-05
+},
+"deepseek|这个项目用的是什么 web 框架？": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.2868224000558257,
+"cost": 4.5144e-05
+},
+"jev|pyproject.toml 里的 requires-python 是多少": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.85,
+"seconds": 0.6091224999399856,
+"cost": 0.0
+},
+"luna|pyproject.toml 里的 requires-python 是多少": {
+"level": "simple",
+"mode": "react",
+"seconds": 2.092151200049557,
+"cost": 4.07e-05
+},
+"deepseek|pyproject.toml 里的 requires-python 是多少": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.852760300040245,
+"cost": 6.3384e-05
+},
+"jev|解释一下 src/agentcli/agent/query.py 里 _arguments_complete 是干什么的": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.71,
+"seconds": 0.5716091999784112,
+"cost": 0.0
+},
+"luna|解释一下 src/agentcli/agent/query.py 里 _arguments_complete 是干什么的": {
+"level": "simple",
+"mode": "react",
+"seconds": 2.070206100004725,
+"cost": 3.76e-05
+},
+"deepseek|解释一下 src/agentcli/agent/query.py 里 _arguments_complete 是干什么的": {
+"level": "simple",
+"mode": "react",
+"seconds": 0.5056465999223292,
+"cost": 0.0001119
+},
+"jev|为什么 pytest 说找不到 conftest 里的 fixture？": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.73,
+"seconds": 0.5864071999676526,
+"cost": 0.0
+},
+"luna|为什么 pytest 说找不到 conftest 里的 fixture？": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.412393799982965,
+"cost": 3.8e-05
+},
+"deepseek|为什么 pytest 说找不到 conftest 里的 fixture？": {
+"level": "simple",
+"mode": "react",
+"seconds": 2.0007746000774205,
+"cost": 7.2048e-05
+},
+"jev|git 怎么撤销上一次 commit 但保留改动": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.88,
+"seconds": 0.6253958999877796,
+"cost": 0.0
+},
+"luna|git 怎么撤销上一次 commit 但保留改动": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.7863494999473915,
+"cost": 3.9e-05
+},
+"deepseek|git 怎么撤销上一次 commit 但保留改动": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.475575599935837,
+"cost": 4.446e-05
+},
+"jev|整个项目有多少个测试文件？": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.8,
+"seconds": 0.5815989000257105,
+"cost": 0.0
+},
+"luna|整个项目有多少个测试文件？": {
+"level": "simple",
+"mode": "react",
+"seconds": 2.2202848000451922,
+"cost": 3.95e-05
+},
+"deepseek|整个项目有多少个测试文件？": {
+"level": "simple",
+"mode": "react",
+"seconds": 0.616208599996753,
+"cost": 0.0001437
+},
+"jev|What does the --read-only flag of mcp serve do?": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.82,
+"seconds": 0.5464419999625534,
+"cost": 0.0
+},
+"luna|What does the --read-only flag of mcp serve do?": {
+"level": "simple",
+"mode": "react",
+"seconds": 2.1482276000315323,
+"cost": 3.65e-05
+},
+"deepseek|What does the --read-only flag of mcp serve do?": {
+"level": "simple",
+"mode": "react",
+"seconds": 0.538557100109756,
+"cost": 0.0001599
+},
+"jev|why is the sandbox image 411 MB?": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.78,
+"seconds": 0.570999399991706,
+"cost": 0.0
+},
+"luna|why is the sandbox image 411 MB?": {
+"level": "simple",
+"mode": "react",
+"seconds": 2.1603819999145344,
+"cost": 3.71e-05
+},
+"deepseek|why is the sandbox image 411 MB?": {
+"level": "simple",
+"mode": "react",
+"seconds": 4.4998968000290915,
+"cost": 4.636e-05
+},
+"jev|这个架构图里 orchestrator 和 worker 是什么关系": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.84,
+"seconds": 0.5643304999684915,
+"cost": 0.0
+},
+"luna|这个架构图里 orchestrator 和 worker 是什么关系": {
+"level": "simple",
+"mode": "react",
+"seconds": 2.4988472000695765,
+"cost": 5.44e-05
+},
+"deepseek|这个架构图里 orchestrator 和 worker 是什么关系": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.493974299984984,
+"cost": 5.016e-05
+},
+"jev|README 里写的默认模型是哪个": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.86,
+"seconds": 0.5448061999632046,
+"cost": 0.0
+},
+"luna|README 里写的默认模型是哪个": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.9487514999927953,
+"cost": 3.76e-05
+},
+"deepseek|README 里写的默认模型是哪个": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.5646689001005143,
+"cost": 4.56e-05
+},
+"jev|运行测试报了下面这个错，是什么原因？\n\nTraceback (most recent call last):\n  File \"tests/test_sessions.py\", line 88, in test_resume_latest\n    session = store.latest(project)\n  File \"src/agentcli/session/store.py\", line 142, in latest\n    metas = sorted(self._metas(project), key=lambda m: m.updated, reverse=True)\n  File \"src/agentcli/session/store.py\", line 97, in _metas\n    data = json.loads(path.read_text(encoding=\"utf-8\"))\njson.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n然后第二次跑又好了，我没改任何东西。": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.77,
+"seconds": 0.5531598000088707,
+"cost": 0.0
+},
+"luna|运行测试报了下面这个错，是什么原因？\n\nTraceback (most recent call last):\n  File \"tests/test_sessions.py\", line 88, in test_resume_latest\n    session = store.latest(project)\n  File \"src/agentcli/session/store.py\", line 142, in latest\n    metas = sorted(self._metas(project), key=lambda m: m.updated, reverse=True)\n  File \"src/agentcli/session/store.py\", line 97, in _metas\n    data = json.loads(path.read_text(encoding=\"utf-8\"))\njson.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n然后第二次跑又好了，我没改任何东西。": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.4262551000574604,
+"cost": 5.56e-05
+},
+"deepseek|运行测试报了下面这个错，是什么原因？\n\nTraceback (most recent call last):\n  File \"tests/test_sessions.py\", line 88, in test_resume_latest\n    session = store.latest(project)\n  File \"src/agentcli/session/store.py\", line 142, in latest\n    metas = sorted(self._metas(project), key=lambda m: m.updated, reverse=True)\n  File \"src/agentcli/session/store.py\", line 97, in _metas\n    data = json.loads(path.read_text(encoding=\"utf-8\"))\njson.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n然后第二次跑又好了，我没改任何东西。": {
+"level": "simple",
+"mode": "react",
+"seconds": 2.854325099964626,
+"cost": 0.000135318
+},
+"jev|how do I set AGENTCLI_HOME on Windows": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.89,
+"seconds": 0.5927671999670565,
+"cost": 0.0
+},
+"luna|how do I set AGENTCLI_HOME on Windows": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.8266716999933124,
+"cost": 3.77e-05
+},
+"deepseek|how do I set AGENTCLI_HOME on Windows": {
+"level": "simple",
+"mode": "react",
+"seconds": 0.5637775999493897,
+"cost": 0.0001608
+},
+"jev|所有的 memory 都存在哪个目录": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.73,
+"seconds": 0.5858249999582767,
+"cost": 0.0
+},
+"luna|所有的 memory 都存在哪个目录": {
+"level": "simple",
+"mode": "react",
+"seconds": 2.221645100042224,
+"cost": 4.2e-05
+},
+"deepseek|所有的 memory 都存在哪个目录": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.832782799960114,
+"cost": 0.000157125
+},
+"jev|什么是 RRF": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.79,
+"seconds": 0.5354690999956802,
+"cost": 0.0
+},
+"luna|什么是 RRF": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.526196499937214,
+"cost": 3.31e-05
+},
+"deepseek|什么是 RRF": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.5130873000016436,
+"cost": 4.6854e-05
+},
+"jev|把 README 里的版本号改成 1.2.0": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.94,
+"seconds": 0.5417343999724835,
+"cost": 0.0
+},
+"luna|把 README 里的版本号改成 1.2.0": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.458646500017494,
+"cost": 4.01e-05
+},
+"deepseek|把 README 里的版本号改成 1.2.0": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.5186835000058636,
+"cost": 4.5372e-05
+},
+"jev|给 DomainPolicy.remember 加一行注释说明为什么排序": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.89,
+"seconds": 0.5380924000637606,
+"cost": 0.0
+},
+"luna|给 DomainPolicy.remember 加一行注释说明为什么排序": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.4464041000464931,
+"cost": 4.85e-05
+},
+"deepseek|给 DomainPolicy.remember 加一行注释说明为什么排序": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.5372673000674695,
+"cost": 4.2408e-05
+},
+"jev|把 max_concurrent_read 的默认值从 4 改成 6": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.94,
+"seconds": 0.58176850003656,
+"cost": 0.0
+},
+"luna|把 max_concurrent_read 的默认值从 4 改成 6": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.7305524001130834,
+"cost": 4.18e-05
+},
+"deepseek|把 max_concurrent_read 的默认值从 4 改成 6": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.2037371000042185,
+"cost": 3.1464e-05
+},
+"jev|rename the helper _clip_output to _truncate_output and update its one caller": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.92,
+"seconds": 0.514542100019753,
+"cost": 0.0
+},
+"luna|rename the helper _clip_output to _truncate_output and update its one caller": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.6394315001089126,
+"cost": 3.57e-05
+},
+"deepseek|rename the helper _clip_output to _truncate_output and update its one caller": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.451270900084637,
+"cost": 5.073e-05
+},
+"jev|先把 .gitignore 里加上 evals/_home/，然后提交": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.94,
+"seconds": 0.5831957999616861,
+"cost": 0.0
+},
+"luna|先把 .gitignore 里加上 evals/_home/，然后提交": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.7726864999858662,
+"cost": 3.84e-05
+},
+"deepseek|先把 .gitignore 里加上 evals/_home/，然后提交": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.9930193000473082,
+"cost": 6.1446e-05
+},
+"jev|fix the typo 'recieve' in docs/usage.md": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.94,
+"seconds": 0.5373848000308499,
+"cost": 0.0
+},
+"luna|fix the typo 'recieve' in docs/usage.md": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.6864031999139115,
+"cost": 3.89e-05
+},
+"deepseek|fix the typo 'recieve' in docs/usage.md": {
+"level": "simple",
+"mode": "react",
+"seconds": 0.5794543999945745,
+"cost": 0.0001263
+},
+"jev|删掉 config.py 里没用到的 import": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.88,
+"seconds": 0.5784414999652654,
+"cost": 0.0
+},
+"luna|删掉 config.py 里没用到的 import": {
+"level": "simple",
+"mode": "react",
+"seconds": 2.4134486000984907,
+"cost": 4.18e-05
+},
+"deepseek|删掉 config.py 里没用到的 import": {
+"level": "simple",
+"mode": "react",
+"seconds": 0.6266471999697387,
+"cost": 0.0001407
+},
+"jev|在 pricing.py 里把 glm-5.3 的输入价格改成 0.6": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.93,
+"seconds": 0.6043199999257922,
+"cost": 0.0
+},
+"luna|在 pricing.py 里把 glm-5.3 的输入价格改成 0.6": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.2410175999393687,
+"cost": 4.42e-05
+},
+"deepseek|在 pricing.py 里把 glm-5.3 的输入价格改成 0.6": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.5416477000107989,
+"cost": 5.3808e-05
+},
+"jev|跑一下 tests/test_memory.py 看看过不过": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.86,
+"seconds": 0.6318233000347391,
+"cost": 0.0
+},
+"luna|跑一下 tests/test_memory.py 看看过不过": {
+"level": "simple",
+"mode": "react",
+"seconds": 2.0501695999410003,
+"cost": 3.87e-05
+},
+"deepseek|跑一下 tests/test_memory.py 看看过不过": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.322250199969858,
+"cost": 3.6366e-05
+},
+"jev|add a --version flag that prints agentcli.__version__": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.92,
+"seconds": 0.7139373999089003,
+"cost": 0.0
+},
+"luna|add a --version flag that prints agentcli.__version__": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.4325132999802008,
+"cost": 4.14e-05
+},
+"deepseek|add a --version flag that prints agentcli.__version__": {
+"level": "simple",
+"mode": "react",
+"seconds": 0.6627372999209911,
+"cost": 0.0001464
+},
+"jev|把这个函数的返回类型标注补上": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.79,
+"seconds": 0.6451315999729559,
+"cost": 0.0
+},
+"luna|把这个函数的返回类型标注补上": {
+"level": "simple",
+"mode": "react",
+"seconds": 2.5751921999035403,
+"cost": 4.57e-05
+},
+"deepseek|把这个函数的返回类型标注补上": {
+"level": "simple",
+"mode": "react",
+"seconds": 12.838408300071023,
+"cost": 0.00010406
+},
+"jev|给 web_fetch 的默认白名单加上 docs.python.org": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.91,
+"seconds": 0.5473329999949783,
+"cost": 0.0
+},
+"luna|给 web_fetch 的默认白名单加上 docs.python.org": {
+"level": "simple",
+"mode": "react",
+"seconds": 1.586862799944356,
+"cost": 4.09e-05
+},
+"deepseek|给 web_fetch 的默认白名单加上 docs.python.org": {
+"level": "simple",
+"mode": "react",
+"seconds": 4.5328459000447765,
+"cost": 4.344e-05
+},
+"jev|给 /sessions 命令加一个 --limit 参数，并补上对应的测试": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.79,
+"seconds": 0.8138872999697924,
+"cost": 0.0
+},
+"luna|给 /sessions 命令加一个 --limit 参数，并补上对应的测试": {
+"level": "moderate",
+"mode": "react",
+"seconds": 1.7237056999001652,
+"cost": 5.14e-05
+},
+"deepseek|给 /sessions 命令加一个 --limit 参数，并补上对应的测试": {
+"level": "moderate",
+"mode": "react",
+"seconds": 1.8309733999194577,
+"cost": 7.5924e-05
+},
+"jev|session 列表现在按创建时间排序，改成按最后更新时间，picker 和 /sessions 都要改": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.79,
+"seconds": 0.6783920000307262,
+"cost": 0.0
+},
+"luna|session 列表现在按创建时间排序，改成按最后更新时间，picker 和 /sessions 都要改": {
+"level": "moderate",
+"mode": "react",
+"seconds": 2.785076900036074,
+"cost": 5.65e-05
+},
+"deepseek|session 列表现在按创建时间排序，改成按最后更新时间，picker 和 /sessions 都要改": {
+"level": "moderate",
+"mode": "react",
+"seconds": 1.8253050000639632,
+"cost": 6.2358e-05
+},
+"jev|web_fetch 遇到 429 时现在直接报错，加上重试和 Retry-After 支持，再写个测试": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.8,
+"seconds": 0.6974653999786824,
+"cost": 0.0
+},
+"luna|web_fetch 遇到 429 时现在直接报错，加上重试和 Retry-After 支持，再写个测试": {
+"level": "moderate",
+"mode": "react",
+"seconds": 3.171822899952531,
+"cost": 5.38e-05
+},
+"deepseek|web_fetch 遇到 429 时现在直接报错，加上重试和 Retry-After 支持，再写个测试": {
+"level": "moderate",
+"mode": "react",
+"seconds": 2.1397859000135213,
+"cost": 9.3594e-05
+},
+"jev|the memory index sometimes lists a deleted memory; find why and fix it, with a regression test": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.82,
+"seconds": 0.5954712000675499,
+"cost": 0.0
+},
+"luna|the memory index sometimes lists a deleted memory; find why and fix it, with a regression test": {
+"level": "moderate",
+"mode": "react",
+"seconds": 3.2148778999689966,
+"cost": 6.76e-05
+},
+"deepseek|the memory index sometimes lists a deleted memory; find why and fix it, with a regression test": {
+"level": "moderate",
+"mode": "react",
+"seconds": 1.0883580000372604,
+"cost": 0.0002277
+},
+"jev|把 save_memory 的 keywords 参数改成可选，没传的时候从标题里自动生成几个": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.88,
+"seconds": 0.6268665000097826,
+"cost": 0.0
+},
+"luna|把 save_memory 的 keywords 参数改成可选，没传的时候从标题里自动生成几个": {
+"level": "moderate",
+"mode": "react",
+"seconds": 2.4991605000104755,
+"cost": 5.92e-05
+},
+"deepseek|把 save_memory 的 keywords 参数改成可选，没传的时候从标题里自动生成几个": {
+"level": "simple",
+"mode": "react",
+"seconds": 0.9645163000095636,
+"cost": 0.0002547
+},
+"jev|排查一下为什么 /resume 选中会话后提示符没有刷新，修掉": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.65,
+"seconds": 0.5556826000101864,
+"cost": 0.0
+},
+"luna|排查一下为什么 /resume 选中会话后提示符没有刷新，修掉": {
+"level": "moderate",
+"mode": "react",
+"seconds": 3.0821706000715494,
+"cost": 7.21e-05
+},
+"deepseek|排查一下为什么 /resume 选中会话后提示符没有刷新，修掉": {
+"level": "moderate",
+"mode": "react",
+"seconds": 2.1472377999452874,
+"cost": 8.265e-05
+},
+"jev|给沙箱加一个 /sandbox status 子命令，显示镜像是否存在、容器是否在跑": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.85,
+"seconds": 0.5283007000107318,
+"cost": 0.0
+},
+"luna|给沙箱加一个 /sandbox status 子命令，显示镜像是否存在、容器是否在跑": {
+"level": "moderate",
+"mode": "react",
+"seconds": 5.209889300051145,
+"cost": 8.35e-05
+},
+"deepseek|给沙箱加一个 /sandbox status 子命令，显示镜像是否存在、容器是否在跑": {
+"level": "moderate",
+"mode": "react",
+"seconds": 1.62689810001757,
+"cost": 6.669e-05
+},
+"jev|make the approval prompt show the full path for write_file and edit_file, and test it": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.76,
+"seconds": 0.5379895000951365,
+"cost": 0.0
+},
+"luna|make the approval prompt show the full path for write_file and edit_file, and test it": {
+"level": "moderate",
+"mode": "react",
+"seconds": 3.0419302999507636,
+"cost": 6.9e-05
+},
+"deepseek|make the approval prompt show the full path for write_file and edit_file, and test it": {
+"level": "moderate",
+"mode": "react",
+"seconds": 1.573837500065565,
+"cost": 5.7684e-05
+},
+"jev|把 L3 截断的头尾比例做成配置项，默认还是 60/40，文档也更新一下": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.79,
+"seconds": 0.5947317000245675,
+"cost": 0.0
+},
+"luna|把 L3 截断的头尾比例做成配置项，默认还是 60/40，文档也更新一下": {
+"level": "moderate",
+"mode": "react",
+"seconds": 2.8150204999838024,
+"cost": 6.34e-05
+},
+"deepseek|把 L3 截断的头尾比例做成配置项，默认还是 60/40，文档也更新一下": {
+"level": "moderate",
+"mode": "react",
+"seconds": 1.7188704999862239,
+"cost": 6.2928e-05
+},
+"jev|统计每次运行调用了几个 skill，加到运行结束的那行总结里": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.72,
+"seconds": 0.5566508999327198,
+"cost": 0.0
+},
+"luna|统计每次运行调用了几个 skill，加到运行结束的那行总结里": {
+"level": "moderate",
+"mode": "react",
+"seconds": 2.8490162999369204,
+"cost": 8.54e-05
+},
+"deepseek|统计每次运行调用了几个 skill，加到运行结束的那行总结里": {
+"level": "moderate",
+"mode": "react",
+"seconds": 7.577194100013003,
+"cost": 8.726e-05
+},
+"jev|先读一下 context/manager.py，然后给 _plan 补几个边界情况的测试": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.7,
+"seconds": 0.6601830999134108,
+"cost": 0.0
+},
+"luna|先读一下 context/manager.py，然后给 _plan 补几个边界情况的测试": {
+"level": "moderate",
+"mode": "react",
+"seconds": 3.1546064999420196,
+"cost": 6.46e-05
+},
+"deepseek|先读一下 context/manager.py，然后给 _plan 补几个边界情况的测试": {
+"level": "moderate",
+"mode": "react",
+"seconds": 2.1192446999484673,
+"cost": 6.9996e-05
+},
+"jev|the retry delay ignores Retry-After when it is an HTTP date; parse both forms": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.76,
+"seconds": 0.6222113999538124,
+"cost": 0.0
+},
+"luna|the retry delay ignores Retry-After when it is an HTTP date; parse both forms": {
+"level": "simple",
+"mode": "react",
+"seconds": 2.455423399922438,
+"cost": 5.54e-05
+},
+"deepseek|the retry delay ignores Retry-After when it is an HTTP date; parse both forms": {
+"level": "moderate",
+"mode": "react",
+"seconds": 12.7428214000538,
+"cost": 9.775e-05
+},
+"jev|每个工具的错误信息格式不统一，统一成 'Tool X failed: 原因' 这种": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.78,
+"seconds": 0.5362347000045702,
+"cost": 0.0
+},
+"luna|每个工具的错误信息格式不统一，统一成 'Tool X failed: 原因' 这种": {
+"level": "moderate",
+"mode": "react",
+"seconds": 2.8410248999716714,
+"cost": 9.09e-05
+},
+"deepseek|每个工具的错误信息格式不统一，统一成 'Tool X failed: 原因' 这种": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.762693899916485,
+"cost": 0.000106248
+},
+"jev|加一个 /cost 命令，显示当前会话累计花费": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.84,
+"seconds": 0.5434203000040725,
+"cost": 0.0
+},
+"luna|加一个 /cost 命令，显示当前会话累计花费": {
+"level": "moderate",
+"mode": "react",
+"seconds": 3.543387500103563,
+"cost": 7.57e-05
+},
+"deepseek|加一个 /cost 命令，显示当前会话累计花费": {
+"level": "moderate",
+"mode": "react",
+"seconds": 1.895277600036934,
+"cost": 6.7488e-05
+},
+"jev|MCP 工具列表缓存过期时间现在写死是 1 天，改成可配置并在 /mcp 里显示剩余时间": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.84,
+"seconds": 0.5196165000088513,
+"cost": 0.0
+},
+"luna|MCP 工具列表缓存过期时间现在写死是 1 天，改成可配置并在 /mcp 里显示剩余时间": {
+"level": "moderate",
+"mode": "react",
+"seconds": 2.636414400069043,
+"cost": 6.39e-05
+},
+"deepseek|MCP 工具列表缓存过期时间现在写死是 1 天，改成可配置并在 /mcp 里显示剩余时间": {
+"level": "moderate",
+"mode": "react",
+"seconds": 0.8646170999854803,
+"cost": 0.0001923
+},
+"jev|write a script that converts the old SQLite memory store to the new file layout, with a dry-run flag": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.79,
+"seconds": 0.5429804000305012,
+"cost": 0.0
+},
+"luna|write a script that converts the old SQLite memory store to the new file layout, with a dry-run flag": {
+"level": "moderate",
+"mode": "react",
+"seconds": 2.4746235999045894,
+"cost": 8.93e-05
+},
+"deepseek|write a script that converts the old SQLite memory store to the new file layout, with a dry-run flag": {
+"level": "moderate",
+"mode": "react",
+"seconds": 2.167642100015655,
+"cost": 7.8204e-05
+},
+"jev|重构整个认证模块": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.95,
+"seconds": 0.5219027999555692,
+"cost": 0.0
+},
+"luna|重构整个认证模块": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.747229300090112,
+"cost": 5.27e-05
+},
+"deepseek|重构整个认证模块": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.4013509999495,
+"cost": 7.2048e-05
+},
+"jev|把会话存储从 JSON 文件迁移到 SQLite，要兼容旧数据，提供迁移命令，并保证 /resume 等所有命令照常工作": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.94,
+"seconds": 0.5482508999994025,
+"cost": 0.0
+},
+"luna|把会话存储从 JSON 文件迁移到 SQLite，要兼容旧数据，提供迁移命令，并保证 /resume 等所有命令照常工作": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.9079673000378534,
+"cost": 6.31e-05
+},
+"deepseek|把会话存储从 JSON 文件迁移到 SQLite，要兼容旧数据，提供迁移命令，并保证 /resume 等所有命令照常工作": {
+"level": "complex",
+"mode": "plan",
+"seconds": 1.673239800031297,
+"cost": 5.8482e-05
+},
+"jev|设计并实现一个插件系统：第三方可以通过 entry point 注册工具，要有版本检查、权限声明和加载失败隔离": {
+"level": "complex",
+"mode": "team",
+"confidence": 0.96,
+"seconds": 0.564411100000143,
+"cost": 0.0
+},
+"luna|设计并实现一个插件系统：第三方可以通过 entry point 注册工具，要有版本检查、权限声明和加载失败隔离": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.595213200082071,
+"cost": 7.04e-05
+},
+"deepseek|设计并实现一个插件系统：第三方可以通过 entry point 注册工具，要有版本检查、权限声明和加载失败隔离": {
+"level": "complex",
+"mode": "plan",
+"seconds": 1.9741365999216214,
+"cost": 6.7602e-05
+},
+"jev|implement a full undo system: every write snapshots the file, /undo restores the last turn, /undo N goes back N turns, and it survives a restart": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.95,
+"seconds": 0.5271362999919802,
+"cost": 0.0
+},
+"luna|implement a full undo system: every write snapshots the file, /undo restores the last turn, /undo N goes back N turns, and it survives a restart": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.467844199971296,
+"cost": 6.04e-05
+},
+"deepseek|implement a full undo system: every write snapshots the file, /undo restores the last turn, /undo N goes back N turns, and it survives a restart": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.165969399968162,
+"cost": 7.9116e-05
+},
+"jev|从零实现一个 LSP 客户端，让 agent 能拿到跳转定义和查找引用的结果": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.94,
+"seconds": 0.5508830000180751,
+"cost": 0.0
+},
+"luna|从零实现一个 LSP 客户端，让 agent 能拿到跳转定义和查找引用的结果": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.2169422999722883,
+"cost": 5.5e-05
+},
+"deepseek|从零实现一个 LSP 客户端，让 agent 能拿到跳转定义和查找引用的结果": {
+"level": "complex",
+"mode": "plan",
+"seconds": 1.6823778999969363,
+"cost": 0.0002238
+},
+"jev|把 LLM 层从我们自己写的 OpenAI 兼容客户端换成官方 SDK，所有 provider 都要跑通，重试和溢出检测的行为不能变": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.93,
+"seconds": 0.529489399981685,
+"cost": 0.0
+},
+"luna|把 LLM 层从我们自己写的 OpenAI 兼容客户端换成官方 SDK，所有 provider 都要跑通，重试和溢出检测的行为不能变": {
+"level": "complex",
+"mode": "plan",
+"seconds": 3.539552600006573,
+"cost": 0.0001226
+},
+"deepseek|把 LLM 层从我们自己写的 OpenAI 兼容客户端换成官方 SDK，所有 provider 都要跑通，重试和溢出检测的行为不能变": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.3314862999832258,
+"cost": 7.695e-05
+},
+"jev|我想给 AgentCLI 加上远程运行：\n1. 起一个 HTTP 服务接收任务\n2. 任务排队执行\n3. 结果通过 SSE 推回去\n4. 支持取消\n5. 需要 token 鉴权": {
+"level": "complex",
+"mode": "team",
+"confidence": 0.96,
+"seconds": 0.560550699941814,
+"cost": 0.0
+},
+"luna|我想给 AgentCLI 加上远程运行：\n1. 起一个 HTTP 服务接收任务\n2. 任务排队执行\n3. 结果通过 SSE 推回去\n4. 支持取消\n5. 需要 token 鉴权": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.3678340999176726,
+"cost": 6.15e-05
+},
+"deepseek|我想给 AgentCLI 加上远程运行：\n1. 起一个 HTTP 服务接收任务\n2. 任务排队执行\n3. 结果通过 SSE 推回去\n4. 支持取消\n5. 需要 token 鉴权": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.3715517000528052,
+"cost": 9.5304e-05
+},
+"jev|redesign the context manager so the protected zone is measured in turns instead of tokens, and rerun the retention experiment": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.93,
+"seconds": 0.5865562000544742,
+"cost": 0.0
+},
+"luna|redesign the context manager so the protected zone is measured in turns instead of tokens, and rerun the retention experiment": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.325166800059378,
+"cost": 6.1e-05
+},
+"deepseek|redesign the context manager so the protected zone is measured in turns instead of tokens, and rerun the retention experiment": {
+"level": "complex",
+"mode": "plan",
+"seconds": 1.7058065999299288,
+"cost": 6.8742e-05
+},
+"jev|升级到 Python 3.14，把所有不兼容的地方修掉，CI 也要改": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.94,
+"seconds": 0.5515724000288174,
+"cost": 0.0
+},
+"luna|升级到 Python 3.14，把所有不兼容的地方修掉，CI 也要改": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.316901699989103,
+"cost": 0.0001024
+},
+"deepseek|升级到 Python 3.14，把所有不兼容的地方修掉，CI 也要改": {
+"level": "complex",
+"mode": "plan",
+"seconds": 48.42794219998177,
+"cost": 8.564e-05
+},
+"jev|给整个项目加上类型检查（mypy strict），修掉所有报错": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.93,
+"seconds": 0.5709317999426275,
+"cost": 0.0
+},
+"luna|给整个项目加上类型检查（mypy strict），修掉所有报错": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.6278666999423876,
+"cost": 6.24e-05
+},
+"deepseek|给整个项目加上类型检查（mypy strict），修掉所有报错": {
+"level": "complex",
+"mode": "plan",
+"seconds": 1.829401999944821,
+"cost": 6.8514e-05
+},
+"jev|the orchestrator should support workers on different models; design the config, change the planner prompt, and add evals": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.96,
+"seconds": 0.5192437999648973,
+"cost": 0.0
+},
+"luna|the orchestrator should support workers on different models; design the config, change the planner prompt, and add evals": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.5831694999942556,
+"cost": 6.05e-05
+},
+"deepseek|the orchestrator should support workers on different models; design the config, change the planner prompt, and add evals": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.3080219998955727,
+"cost": 9.1542e-05
+},
+"jev|实现记忆的冲突检测：新记忆写入前找相似旧记忆，让模型决定新增、更新还是作废，要有版本和回滚": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.94,
+"seconds": 0.5536821999121457,
+"cost": 0.0
+},
+"luna|实现记忆的冲突检测：新记忆写入前找相似旧记忆，让模型决定新增、更新还是作废，要有版本和回滚": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.6595798999769613,
+"cost": 6.57e-05
+},
+"deepseek|实现记忆的冲突检测：新记忆写入前找相似旧记忆，让模型决定新增、更新还是作废，要有版本和回滚": {
+"level": "complex",
+"mode": "plan",
+"seconds": 1.7993755999486893,
+"cost": 6.2244e-05
+},
+"jev|把 bash 沙箱从 Docker 换成可插拔后端，支持 Docker 和 Windows Sandbox 两种": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.93,
+"seconds": 0.5336168999783695,
+"cost": 0.0
+},
+"luna|把 bash 沙箱从 Docker 换成可插拔后端，支持 Docker 和 Windows Sandbox 两种": {
+"level": "complex",
+"mode": "plan",
+"seconds": 2.460678100003861,
+"cost": 6.09e-05
+},
+"deepseek|把 bash 沙箱从 Docker 换成可插拔后端，支持 Docker 和 Windows Sandbox 两种": {
+"level": "complex",
+"mode": "plan",
+"seconds": 1.6696924000279978,
+"cost": 6.7374e-05
+},
+"jev|逐个检查每个工具的权限声明是否正确，发现问题就修，修完一个再看下一个": {
+"level": "complex",
+"mode": "plan",
+"confidence": 0.75,
+"seconds": 0.567439500009641,
+"cost": 0.0
+},
+"luna|逐个检查每个工具的权限声明是否正确，发现问题就修，修完一个再看下一个": {
+"level": "complex",
+"mode": "plan",
+"seconds": 1.8795613000402227,
+"cost": 7.26e-05
+},
+"deepseek|逐个检查每个工具的权限声明是否正确，发现问题就修，修完一个再看下一个": {
+"level": "complex",
+"mode": "plan",
+"seconds": 1.8747040999587625,
+"cost": 7.5354e-05
+},
+"jev|build a web UI for AgentCLI: chat view, tool approval dialog, session list, streamed output": {
+"level": "complex",
+"mode": "team",
+"confidence": 0.93,
+"seconds": 0.558693700004369,
+"cost": 0.0
+},
+"luna|build a web UI for AgentCLI: chat view, tool approval dialog, session list, streamed output": {
+"level": "complex",
+"mode": "team",
+"seconds": 3.015201900037937,
+"cost": 8.67e-05
+},
+"jev|分别给 tools、memory、session、sandbox 四个模块补齐单元测试，覆盖率都到 90%": {
+"level": "complex",
+"mode": "team",
+"confidence": 0.94,
+"seconds": 0.6014530999818817,
+"cost": 0.0
+},
+"luna|分别给 tools、memory、session、sandbox 四个模块补齐单元测试，覆盖率都到 90%": {
+"level": "complex",
+"mode": "team",
+"seconds": 2.982915799948387,
+"cost": 6.27e-05
+},
+"deepseek|分别给 tools、memory、session、sandbox 四个模块补齐单元测试，覆盖率都到 90%": {
+"level": "complex",
+"mode": "team",
+"seconds": 1.665376599994488,
+"cost": 5.2326e-05
+},
+"jev|把 docs 目录下每个 md 文件分别翻译成英文": {
+"level": "complex",
+"mode": "team",
+"confidence": 0.85,
+"seconds": 0.6782404000405222,
+"cost": 0.0
+},
+"luna|把 docs 目录下每个 md 文件分别翻译成英文": {
+"level": "complex",
+"mode": "team",
+"seconds": 3.117926500039175,
+"cost": 6.86e-05
+},
+"deepseek|把 docs 目录下每个 md 文件分别翻译成英文": {
+"level": "complex",
+"mode": "team",
+"seconds": 2.52485779998824,
+"cost": 0.000103626
+},
+"jev|review every module under src/agentcli for unhandled exceptions and write a report per module": {
+"level": "complex",
+"mode": "team",
+"confidence": 0.95,
+"seconds": 0.7010216000489891,
+"cost": 0.0
+},
+"luna|review every module under src/agentcli for unhandled exceptions and write a report per module": {
+"level": "complex",
+"mode": "team",
+"seconds": 2.404391899937764,
+"cost": 5.3e-05
+},
+"deepseek|review every module under src/agentcli for unhandled exceptions and write a report per module": {
+"level": "complex",
+"mode": "team",
+"seconds": 2.31043780001346,
+"cost": 9.6558e-05
+},
+"jev|同时做三件事：修 web_fetch 的编码问题、给 grep 加 --type 参数、更新 README 的安装说明": {
+"level": "complex",
+"mode": "team",
+"confidence": 0.89,
+"seconds": 0.6070076000178233,
+"cost": 0.0
+},
+"luna|同时做三件事：修 web_fetch 的编码问题、给 grep 加 --type 参数、更新 README 的安装说明": {
+"level": "complex",
+"mode": "team",
+"seconds": 2.6049395999871194,
+"cost": 6.07e-05
+},
+"deepseek|同时做三件事：修 web_fetch 的编码问题、给 grep 加 --type 参数、更新 README 的安装说明": {
+"level": "complex",
+"mode": "team",
+"seconds": 1.4361103000119328,
+"cost": 6.0876e-05
+},
+"jev|为 OpenAI、Anthropic、Gemini、DeepSeek 四个 provider 各写一个集成测试": {
+"level": "complex",
+"mode": "team",
+"confidence": 0.89,
+"seconds": 0.6672575999982655,
+"cost": 0.0
+},
+"luna|为 OpenAI、Anthropic、Gemini、DeepSeek 四个 provider 各写一个集成测试": {
+"level": "moderate",
+"mode": "react",
+"seconds": 3.7877952000126243,
+"cost": 7.39e-05
+},
+"deepseek|为 OpenAI、Anthropic、Gemini、DeepSeek 四个 provider 各写一个集成测试": {
+"level": "complex",
+"mode": "team",
+"seconds": 0.8126276000402868,
+"cost": 0.0001722
+},
+"jev|benchmark the five summary models on the retention set, each in its own run, and compare": {
+"level": "complex",
+"mode": "team",
+"confidence": 0.87,
+"seconds": 0.5671101999469101,
+"cost": 0.0
+},
+"luna|benchmark the five summary models on the retention set, each in its own run, and compare": {
+"level": "complex",
+"mode": "team",
+"seconds": 2.8225486000301316,
+"cost": 9.7e-05
+},
+"deepseek|benchmark the five summary models on the retention set, each in its own run, and compare": {
+"level": "complex",
+"mode": "team",
+"seconds": 1.8450304999714717,
+"cost": 6.4182e-05
+},
+"jev|把项目里所有 print 调试语句分别按模块清理掉，每个模块单独提交": {
+"level": "complex",
+"mode": "team",
+"confidence": 0.91,
+"seconds": 0.7367100000847131,
+"cost": 0.0
+},
+"luna|把项目里所有 print 调试语句分别按模块清理掉，每个模块单独提交": {
+"level": "complex",
+"mode": "team",
+"seconds": 2.007838899968192,
+"cost": 8.08e-05
+},
+"deepseek|把项目里所有 print 调试语句分别按模块清理掉，每个模块单独提交": {
+"level": "complex",
+"mode": "team",
+"seconds": 1.9051532000303268,
+"cost": 6.4524e-05
+},
+"jev|并行地给 evals 下的四个实验脚本各加一个 --dry-run 选项": {
+"level": "simple",
+"mode": "react",
+"confidence": 0.83,
+"seconds": 0.5705832000821829,
+"cost": 0.0
+},
+"luna|并行地给 evals 下的四个实验脚本各加一个 --dry-run 选项": {
+"level": "complex",
+"mode": "team",
+"seconds": 3.1565472000511363,
+"cost": 8.64e-05
+},
+"deepseek|并行地给 evals 下的四个实验脚本各加一个 --dry-run 选项": {
+"level": "complex",
+"mode": "team",
+"seconds": 1.5266474999953061,
+"cost": 5.0844e-05
+},
+"jev|audit the three MCP servers we ship with (chrome, filesystem, git) for path escapes, one report each": {
+"level": "complex",
+"mode": "team",
+"confidence": 0.93,
+"seconds": 0.5494681999552995,
+"cost": 0.0
+},
+"luna|audit the three MCP servers we ship with (chrome, filesystem, git) for path escapes, one report each": {
+"level": "complex",
+"mode": "team",
+"seconds": 2.0182278999127448,
+"cost": 5.19e-05
+},
+"deepseek|audit the three MCP servers we ship with (chrome, filesystem, git) for path escapes, one report each": {
+"level": "complex",
+"mode": "team",
+"seconds": 1.7604817000683397,
+"cost": 5.7114e-05
+},
+"jev|给每个内置工具写一份使用文档，放到 docs/tools/ 下，一个工具一个文件": {
+"level": "complex",
+"mode": "team",
+"confidence": 0.91,
+"seconds": 0.5913532000267878,
+"cost": 0.0
+},
+"luna|给每个内置工具写一份使用文档，放到 docs/tools/ 下，一个工具一个文件": {
+"level": "complex",
+"mode": "team",
+"seconds": 2.7008249999489635,
+"cost": 8.15e-05
+},
+"deepseek|给每个内置工具写一份使用文档，放到 docs/tools/ 下，一个工具一个文件": {
+"level": "complex",
+"mode": "team",
+"seconds": 1.16540990001522,
+"cost": 9.2660415e-05
+},
+"jev|迁移 4 个旧实验的结果格式到新 schema：context_retention、workers、models、memory_recall，互不相关": {
+"level": "complex",
+"mode": "team",
+"confidence": 0.84,
+"seconds": 0.5644188000587747,
+"cost": 0.0
+},
+"luna|迁移 4 个旧实验的结果格式到新 schema：context_retention、workers、models、memory_recall，互不相关": {
+"level": "complex",
+"mode": "team",
+"seconds": 2.2122057999949902,
+"cost": 5.31e-05
+},
+"deepseek|迁移 4 个旧实验的结果格式到新 schema：context_retention、workers、models、memory_recall，互不相关": {
+"level": "complex",
+"mode": "team",
+"seconds": 1.1915814999956638,
+"cost": 8.87e-05
+},
+"jev|port the CLI's colour theme, its key bindings, and its status line to the new renderer; the three are independent": {
+"level": "complex",
+"mode": "team",
+"confidence": 0.9,
+"seconds": 0.6239658000413328,
+"cost": 0.0
+},
+"luna|port the CLI's colour theme, its key bindings, and its status line to the new renderer; the three are independent": {
+"level": "complex",
+"mode": "team",
+"seconds": 2.175072900019586,
+"cost": 5.16e-05
+},
+"deepseek|port the CLI's colour theme, its key bindings, and its status line to the new renderer; the three are independent": {
+"level": "complex",
+"mode": "team",
+"seconds": 0.6030507000396028,
+"cost": 0.0001206
+},
+"deepseek|build a web UI for AgentCLI: chat view, tool approval dialog, session list, streamed output": {
+"level": "complex",
+"mode": "plan",
+"seconds": 1.0687652999768034,
+"cost": 0.000267
+}
+}

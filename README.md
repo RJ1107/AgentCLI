@@ -209,7 +209,7 @@ The agent saves a memory with `save_memory` (or you with `/save`) when something
 Memories are recalled in three tiers:
 
 1. The index (one line per memory) is in the system prompt from the start of a session, so the model knows what exists. It is fixed for the session and stays in the prompt cache.
-2. With each request, the full text of the few memories it is clearly about: BM25 over title, keywords, and content, top 3, and only those covering at least 55% of the request's subject words. Precision first: a wrong memory costs tokens and can mislead, a missing one can be looked up.
+2. With each request, the full text of the few memories it is about. BM25 over title, keywords, and content shortlists 15; with `TYPESAFE_API_KEY` set, one request to [Jev](https://docs.typesafe.ai) (a decision model: typed yes/no answers with probabilities, about 0.25 s) says for each whether it helps answer the request, and up to 3 with a probability of 0.85 or more are attached. Without Jev, or when it is slow (0.8 s) or down, the gate is word coverage: top 3 covering at least 55% of the request's subject words. Precision first either way: a wrong memory costs tokens and can mislead, a missing one can be looked up. On the recall set Jev raised the share of relevant memories attached from 56% to 97% at 98% precision, with none attached to unrelated requests (`evals/README.md`, experiment 5).
 3. `search_memory` for more, with a lower bar (35%) and up to 8 results; the model can also `read_file` a memory file.
 
 The ranking weights and both bars were set on a labelled recall set (`evals/README.md`, experiment 4): relevance decides the order, and importance and recency only break near-ties. `/memory` shows the index; `/memory search|show|delete|stats|path|clear` manage it. Memories from the earlier SQLite store are imported into files once per project.
@@ -233,7 +233,9 @@ Providers keep the prompt cache only for a while and do not report when it expir
 
 ## Routing
 
-Before a request runs in normal mode, AgentCLI estimates how big it is. Built-in rules decide instantly when the signal is clear (length, step words such as "首先/然后/最后", listed items, scope words such as "整个/重构/迁移", fan-out words such as "分别/并行"). Only unclear requests go to a classifier, tried in the order of `routing.classifiers`: Jev (`jev_enabled` plus `TYPESAFE_API_KEY`), then a cheap model (`classifier_model`). Each has a timeout, and a classifier that is disabled, slow, or down is skipped, so the rules' verdict is always the fallback.
+Before a request runs in normal mode, AgentCLI estimates how big it is. Built-in rules settle a plain short question at once and flag a clearly large request (length, step words such as "首先/然后/最后", listed items, scope words such as "整个/重构/迁移", fan-out words such as "分别/并行"). Everything else goes to a cheap model (`classifier_model`), tried in the order of `routing.classifiers`. It has a timeout, and a classifier that is slow or down is skipped, so the rules' verdict is always the fallback. Jev can be added to the chain (`"jev"` plus `jev_enabled`), but on a labelled set it chose react, /plan, or /team correctly 87% of the time against the model's 97%, so it is off by default (experiment 6).
+
+With `routing.preload_tools` (off by default) and `TYPESAFE_API_KEY`, Jev also guesses from the request whether it needs a deferred MCP server, such as the browser, and which of its tools, and loads them before the first model call so the model can skip `load_tools`. It cut browser tasks' model calls by 18% but not their cost (experiment 8).
 
 `/plan` and `/team` can use a different model per role, as `"provider:model"`:
 
