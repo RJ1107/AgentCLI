@@ -145,7 +145,17 @@ def rules_decision(message: str) -> RouteDecision:
         return RouteDecision("complex", mode, confidence, reasons)
     if score >= 3:
         return RouteDecision("moderate", "react", 0.5, reasons)
-    return RouteDecision("simple", "react", 0.9 if score <= 0 else 0.8, reasons)
+    # The rules can only be sure a request is small when it is plainly a short question.
+    # In evals/jev_intent.py they called every other short request "simple" with confidence,
+    # including "重构整个认证模块", so those now go to the classifier.
+    return RouteDecision("simple", "react", 0.9 if _plain_question(text) else 0.5, reasons)
+
+
+def _plain_question(text: str) -> bool:
+    lowered = text.lower().strip()
+    return len(lowered) < 60 and (
+        any(cue in lowered for cue in _QUESTION_CUES) or lowered.endswith(("?", "？", "吗"))
+    )
 
 
 _CLASSIFIER_PROMPT = """You triage requests to a coding agent. Reply with JSON only:

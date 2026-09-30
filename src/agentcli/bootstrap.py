@@ -25,6 +25,7 @@ async def build_tool_registry(
         registry.register_all(await manager.load_tools())
         if registry.deferred_tools():
             descriptions = {name: spec.description for name, spec in manager.specs.items()}
+            registry.server_descriptions = descriptions
             registry.register(build_load_tools_tool(registry, descriptions))
     return registry, manager
 

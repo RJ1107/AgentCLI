@@ -109,7 +109,7 @@ def test_clear_requests_never_wait_for_a_classifier(tmp_path):
 def test_unclear_request_goes_to_jev_when_enabled(tmp_path, monkeypatch):
     monkeypatch.setenv("TYPESAFE_API_KEY", "jev-key")
     router = IntentRouter(
-        _config(tmp_path, jev_enabled=True),
+        _config(tmp_path, jev_enabled=True, classifiers=["jev", "llm"]),
         _Tiers(_Classifier(None)),
         jev_transport=_jev({"trivial": 0.1, "needs_plan": 0.9, "parallel": 0.2}),
     )
@@ -125,7 +125,7 @@ def test_jev_outage_falls_back_to_the_model_then_the_rules(tmp_path, monkeypatch
 
     model = _Classifier('{"level":"complex","mode":"team","reason":"三处改动可以并行"}')
     via_model = asyncio.run(
-        IntentRouter(_config(tmp_path, jev_enabled=True), _Tiers(model), jev_transport=down).route(
+        IntentRouter(_config(tmp_path, jev_enabled=True, classifiers=["jev", "llm"]), _Tiers(model), jev_transport=down).route(
             UNCLEAR
         )
     )
@@ -134,7 +134,7 @@ def test_jev_outage_falls_back_to_the_model_then_the_rules(tmp_path, monkeypatch
 
     both_down = asyncio.run(
         IntentRouter(
-            _config(tmp_path, jev_enabled=True), _Tiers(_Classifier(None)), jev_transport=down
+            _config(tmp_path, jev_enabled=True, classifiers=["jev", "llm"]), _Tiers(_Classifier(None)), jev_transport=down
         ).route(UNCLEAR)
     )
     assert both_down.source == "rules"

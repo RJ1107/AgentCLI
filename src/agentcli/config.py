@@ -60,6 +60,13 @@ class MemoryConfig:
     #    covers; the value comes from the recall evaluation in evals/memory_recall.py.
     recall_limit: int = 3
     recall_min_coverage: float = 0.55
+    #    With TYPESAFE_API_KEY set, BM25 only shortlists and Jev judges relevance instead of
+    #    the coverage gate (memory/rerank.py; evals/jev_recall.py: recall 56% -> 97% at 98%
+    #    precision, about 0.25 s). Slow or failing, the coverage gate is used as before.
+    recall_reranker: str = "jev"  # "jev" or "none"
+    recall_shortlist: int = 15
+    recall_jev_threshold: float = 0.85
+    recall_jev_timeout: float = 0.8
     # 3. search_memory, which the model calls when it needs more: recall first.
     search_limit: int = 8
     search_min_coverage: float = 0.35
@@ -149,12 +156,24 @@ class RoutingConfig:
     # Suggest /plan or /team when a request in normal mode looks like a large task.
     suggest_modes: bool = True
     # Classifiers asked when the built-in rules are unsure, in order; each may be missing,
-    # slow, or down, and the rules' own verdict is always the fallback. "jev" needs
-    # TYPESAFE_API_KEY; "llm" uses classifier_model.
-    classifiers: list[str] = field(default_factory=lambda: ["jev", "llm"])
+    # slow, or down, and the rules' own verdict is always the fallback. "llm" uses
+    # classifier_model; "jev" (needs TYPESAFE_API_KEY and jev_enabled) scored 87% against the
+    # LLM's 97% in evals/jev_intent.py, so it is not in the default chain.
+    classifiers: list[str] = field(default_factory=lambda: ["llm"])
     jev_enabled: bool = False
     jev_model: str = "jev-latest"
     jev_timeout: float = 1.5
+    # Before a request, Jev guesses whether it needs a deferred MCP server's tools (a browser,
+    # say) and loads the likeliest ones, saving the model a load_tools round trip
+    # (tools/preload.py). Needs TYPESAFE_API_KEY. Off by default: in evals/preload_e2e.py it
+    # cut browser tasks' model calls by 18% but not their cost, since the preloaded
+    # definitions ride along on every later call.
+    preload_tools: bool = False
+    preload_threshold: float = 0.6
+    preload_tool_threshold: float = 0.6
+    preload_min_tools: int = 3
+    preload_max_tools: int = 10
+    preload_timeout: float = 0.8
     classifier_model: str = ""  # "provider:model"; empty means fast_model, then the session model
     classifier_timeout: float = 6.0
     # Model tiers as "provider:model" (e.g. "openrouter:openai/gpt-6-sol"); empty means the

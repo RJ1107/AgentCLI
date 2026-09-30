@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
 from typing import Any
@@ -42,13 +43,28 @@ async def query(
     original_user_message = user_message
     user_message = _prepend_skill_candidates(user_message, cwd, config)
     user_message = _prepend_skill_context(user_message, skill_context_buffer)
-    turn_context = PromptAssembler(
+    assembler = PromptAssembler(
         config=config,
         cwd=cwd,
         tool_names=tool_registry.list_names(),
         model=llm_client.model_name,
         provider=llm_client.provider_name,
-    ).build_dynamic(original_user_message)
+    )
+    # Both may wait on Jev (about 0.25 s); asked together, the request waits for one.
+    recalled, preloaded = await asyncio.gather(
+        assembler.recall(original_user_message),
+        _preload(original_user_message, tool_registry, config),
+    )
+    if preloaded:
+        yield {"type": "tools_preloaded", "names": preloaded}
+    turn_context = assembler.build_dynamic(original_user_message, recalled=recalled)
+    if preloaded:
+        # Otherwise the model, told by load_tools that deferred tools need loading, loads
+        # them again and the round trip preloading saves is spent anyway.
+        turn_context += (
+            "\n\nAlready loaded for this request (call them directly, no load_tools needed): "
+            + ", ".join(preloaded)
+        )
     user_message = f"{turn_context}\n\n{user_message}"
     messages = [
         *(history or []),
@@ -375,3 +391,26 @@ def _calculate_costs(llm_client: LlmClient, usage: Usage) -> dict[str, Any]:
             continue
         result[currency] = breakdown.to_dict()
     return result
+
+
+async def _preload(message: str, registry: ToolRegistry, config: AgentCliConfig) -> list[str]:
+    """Deferred tools Jev expects this request to need, loaded before the first model call."""
+
+    from agentcli import jev
+    from agentcli.tools.preload import preload_tools
+
+    routing = config.routing
+    if not (routing.preload_tools and jev.available() and registry.deferred_tools()):
+        return []
+    try:
+        return await preload_tools(
+            message,
+            registry,
+            threshold=routing.preload_threshold,
+            timeout=routing.preload_timeout,
+            tool_threshold=routing.preload_tool_threshold,
+            min_tools=routing.preload_min_tools,
+            max_tools=routing.preload_max_tools,
+        )
+    except Exception:  # noqa: BLE001 - no guess: the model loads what it needs itself
+        return []

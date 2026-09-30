@@ -143,6 +143,9 @@ class RichRenderer:
             self._flush_markdown(title="Assistant Output")
             self._count_tool_call(event)
             self._print_tool_call(event)
+        elif event_type == "tools_preloaded":
+            names = ", ".join(str(name).split("__")[-1] for name in event.get("names") or [])
+            self.console.print(f"[dim]预加载工具（Jev 判断）：{names}[/dim]")
         elif event_type == "tool_result":
             self._flush_thinking()
             self._flush_markdown(title="Assistant Output")

@@ -4,7 +4,9 @@ from datetime import datetime
 from pathlib import Path
 
 from agentcli.config import AgentCliConfig
+from agentcli import jev
 from agentcli.memory import FileMemory
+from agentcli.memory.rerank import jev_recall
 
 
 class PromptAssembler:
@@ -86,7 +88,7 @@ class PromptAssembler:
             )
         return "\n".join(parts)
 
-    def build_dynamic(self, user_message: str) -> str:
+    def build_dynamic(self, user_message: str, recalled: str | None = None) -> str:
         """Context for one user request, attached to that request's user message.
 
         The date is day-granular on purpose: it is the only clock the model needs, and a
@@ -101,7 +103,7 @@ class PromptAssembler:
             f"Model: {self.model} ({self.provider})",
             "</runtime-context>",
         ]
-        memories = self._recalled_memories(user_message)
+        memories = self._recalled_memories(user_message) if recalled is None else recalled
         if memories:
             parts.extend(
                 [
@@ -182,8 +184,36 @@ class PromptAssembler:
             limit=self.config.memory.recall_limit,
             min_coverage=self.config.memory.recall_min_coverage,
         )
-        lines = [
-            f"- [{hit.record.kind}] {hit.record.title} ({hit.record.name}.md): {hit.record.content}"
-            for hit in hits
-        ]
-        return "\n".join(lines)[:6_000]
+        return _recall_text(hits)
+
+    async def recall(self, user_message: str, *, transport=None) -> str:
+        """Tier 2 with Jev judging a BM25 shortlist when it can; the coverage gate otherwise."""
+
+        settings = self.config.memory
+        memory = self._memory()
+        if memory is None or not user_message.strip():
+            return ""
+        if settings.recall_reranker == "jev" and jev.available():
+            shortlist = memory.search(user_message, limit=settings.recall_shortlist)
+            try:
+                hits = await jev_recall(
+                    user_message,
+                    shortlist,
+                    threshold=settings.recall_jev_threshold,
+                    limit=settings.recall_limit,
+                    timeout=settings.recall_jev_timeout,
+                    transport=transport,
+                )
+            except Exception:  # noqa: BLE001 - Jev slow or down: keep the coverage gate
+                pass
+            else:
+                return _recall_text(hits)
+        return self._recalled_memories(user_message)
+
+
+def _recall_text(hits) -> str:
+    lines = [
+        f"- [{hit.record.kind}] {hit.record.title} ({hit.record.name}.md): {hit.record.content}"
+        for hit in hits
+    ]
+    return "\n".join(lines)[:6_000]

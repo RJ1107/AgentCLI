@@ -8,6 +8,8 @@ class ToolRegistry:
         self._tools: dict[str, Tool] = {}
         # Deferred tools the model has loaded; they stay loaded for the rest of the session.
         self._activated: set[str] = set()
+        # What each MCP server is for, from its config; used to describe deferred tools.
+        self.server_descriptions: dict[str, str] = {}
 
     def register(self, tool: Tool) -> None:
         self._tools[tool.name] = tool
